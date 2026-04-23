@@ -1,0 +1,12 @@
+{
+  "name": "tl-claude-tools",
+  "version": "0.1.0",
+  "description": "Claude Code extensions for TopLogic development: skills, references, and tooling for working with the TopLogic framework and applications built on top of it.",
+  "author": {
+    "name": "Business Operation Systems GmbH",
+    "url": "https://top-logic.com"
+  },
+  "homepage": "https://github.com/top-logic/tl-claude-tools",
+  "license": "AGPL-3.0-only OR LicenseRef-BOS-TopLogic-1.0",
+  "keywords": ["toplogic", "tl-script", "no-code"]
+}

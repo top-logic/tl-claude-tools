@@ -1,0 +1,15 @@
+{
+  "name": "toplogic",
+  "owner": {
+    "name": "Business Operation Systems GmbH",
+    "url": "https://top-logic.com"
+  },
+  "description": "Claude Code extensions for TopLogic — skills, references, and tooling for the TopLogic framework and applications built on top of it.",
+  "plugins": [
+    {
+      "name": "tl-claude-tools",
+      "source": "./",
+      "description": "Skills and references for TopLogic framework and application development."
+    }
+  ]
+}
