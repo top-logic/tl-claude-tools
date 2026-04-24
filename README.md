@@ -29,16 +29,11 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 
 ### MCP servers
 
-- **`tl-mcp`** — Indexes the Java type graph (classes, members, annotations, references, call graph, source snippets) of the current Maven reactor and serves structured queries over MCP. Exposes `query_types`, `describe_type`, `list_members`, `references_to`, `callers_of`, `field_accessors`, `module_of`, `show_source`. When it is available, the agent should prefer these tools over filesystem `grep`/`find` for Java navigation — the MCP server ships an `instructions` block that tells the LLM exactly when and how. Launched via `mvn com.top-logic:tl-mcp-server:0.1.0-SNAPSHOT:serve` in the project's working directory, so Claude Code sessions opened inside a Maven reactor get it automatically.
+- **`tl-mcp`** — Indexes the Java type graph (classes, members, annotations, references, call graph, source snippets) of the current Maven reactor and serves structured queries over MCP. Exposes `query_types`, `describe_type`, `list_members`, `references_to`, `callers_of`, `field_accessors`, `module_of`, `show_source`. When it is available, the agent should prefer these tools over filesystem `grep`/`find` for Java navigation — the MCP server ships an `instructions` block that tells the LLM exactly when and how. Launched via `mvn com.top-logic:tl-mcp-server:0.1.0:serve` in the project's working directory, so Claude Code sessions opened inside a Maven reactor get it automatically.
 
-  **One-time setup:** clone and install the [`tl-mcp-server`](http://tl.bos.local:3000/TopLogic/tl-mcp-server) repo so the plugin artifact lands in your local Maven repository:
+  **Repository:** `com.top-logic:tl-mcp-server:0.1.0` is published to the TopLogic Nexus (<https://dev.top-logic.com/nexus/repository/toplogic/>). If your `~/.m2/settings.xml` already has that Nexus configured as a mirror or plugin repository (standard for TopLogic developers), Maven fetches the plugin on first use — nothing else to install. Otherwise clone and build [`tl-mcp-server`](http://tl.bos.local:3000/TopLogic/tl-mcp-server) once so the artifact lands in your local repository.
 
-  ```bash
-  git clone http://tl.bos.local:3000/TopLogic/tl-mcp-server.git
-  cd tl-mcp-server && mvn install
-  ```
-
-  After that, opening Claude Code inside any built Maven reactor boots the MCP server on session init. Outside a Maven project the server fails fast; disable it via `/mcp` if you don't need it.
+  Outside a Maven project the server fails fast; disable it via `/mcp` if you don't need it.
 
 ## Development
 

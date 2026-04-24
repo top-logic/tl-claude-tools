@@ -12,7 +12,7 @@
   "mcpServers": {
     "tl-mcp": {
       "command": "mvn",
-      "args": ["-q", "com.top-logic:tl-mcp-server:0.1.0-SNAPSHOT:serve"]
+      "args": ["-q", "com.top-logic:tl-mcp-server:0.1.0:serve"]
     }
   }
 }
