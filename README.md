@@ -26,6 +26,8 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 ### Skills
 
 - **`tl-script`** — Reference for TL Script (TopLogic's embedded expression language). Covers surface syntax, semantics, and a search strategy for locating registered script functions. Triggers automatically when reading, writing, or debugging TL Script expressions.
+- **`tl-app`** — Start, stop, or restart a TopLogic application during a Claude Code session. Ships a helper shell script that tracks the port, tails the log until the app reports ready, and reports the URL.
+- **`run-scripted-test`** — Run a TopLogic scripted test (`.script.xml`) via the generic `test.TestAll` runner. Locates the test by name or path, resolves the containing module, and invokes Maven with the right system properties.
 
 ### MCP servers
 
@@ -44,7 +46,12 @@ The plugin layout follows the [Claude Code plugin reference](https://code.claude
 ├── plugin.json         # plugin manifest
 └── marketplace.json    # marketplace catalog
 skills/
-└── tl-script/
+├── tl-script/
+│   └── SKILL.md
+├── tl-app/
+│   ├── SKILL.md
+│   └── tl-app.sh
+└── run-scripted-test/
     └── SKILL.md
 ```
 
