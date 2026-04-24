@@ -1,6 +1,6 @@
 {
   "name": "tl-claude-tools",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Claude Code extensions for TopLogic development: skills, references, and tooling for working with the TopLogic framework and applications built on top of it.",
   "author": {
     "name": "Business Operation Systems GmbH",
@@ -8,15 +8,5 @@
   },
   "homepage": "https://github.com/top-logic/tl-claude-tools",
   "license": "AGPL-3.0-only OR LicenseRef-BOS-TopLogic-1.0",
-  "keywords": ["toplogic", "tl-script", "no-code"],
-  "mcpServers": {
-    "tl-mcp": {
-      "command": "mvn",
-      "args": [
-        "-s", "${CLAUDE_PLUGIN_ROOT}/mvn-settings.xml",
-        "-q",
-        "com.top-logic:tl-mcp-server:0.1.0:serve"
-      ]
-    }
-  }
+  "keywords": ["toplogic", "tl-script", "no-code"]
 }

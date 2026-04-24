@@ -1,0 +1,10 @@
+{
+  "tl-mcp": {
+    "command": "mvn",
+    "args": [
+      "-s", "${CLAUDE_PLUGIN_ROOT}/mvn-settings.xml",
+      "-q",
+      "com.top-logic:tl-mcp-server:0.1.0:serve"
+    ]
+  }
+}
