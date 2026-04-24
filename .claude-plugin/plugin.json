@@ -8,5 +8,11 @@
   },
   "homepage": "https://github.com/top-logic/tl-claude-tools",
   "license": "AGPL-3.0-only OR LicenseRef-BOS-TopLogic-1.0",
-  "keywords": ["toplogic", "tl-script", "no-code"]
+  "keywords": ["toplogic", "tl-script", "no-code"],
+  "mcpServers": {
+    "tl-mcp": {
+      "command": "mvn",
+      "args": ["-q", "com.top-logic:tl-mcp-server:0.1.0-SNAPSHOT:serve"]
+    }
+  }
 }
