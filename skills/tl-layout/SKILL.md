@@ -219,16 +219,31 @@ Inside a `tileTable`/`tileTreetable`'s `<component>`, the `ContextTileComponent`
 
 ## Locating example layouts
 
-```bash
-# In the TL engine checkout (if available):
-find tmp/tl-engine-7 -name "*.layout.xml" -not -path "*/target/*"
+The TopLogic engine source contains the authoritative template definitions (in `com.top_logic/.../layouts/com.top_logic/*.template.xml`) and thousands of demo layouts. Clone it shallowly into the project's `tmp/` directory at the **tag matching the app's TopLogic version** (read from the `tl-parent-app` artifact version in the app's `pom.xml`):
 
-# Particularly informative directories:
-#   com.top_logic.demo/.../technical/components/        — most templates, many channel patterns
-#   com.top_logic.demo/.../technical/components/tiles/  — tile / tileTable nesting
-#   com.top_logic.demo/.../technical/components/combiningChannel/ — CombineLinking examples
-#   com.top_logic.demo/.../technical/components/tabellenUndBaeume/ — table / tree templates
+```bash
+# Resolve the version from the app's pom (parent <version>) — e.g. 7.10.2:
+TL_VERSION=$(mvn -q help:evaluate -Dexpression=project.parent.version -DforceStdout)
+
+# Shallow clone the matching tag into ./tmp/ (gitignored in most TL apps):
+git clone --depth 1 --branch "$TL_VERSION" \
+    https://github.com/top-logic/tl-engine.git tmp/tl-engine
 ```
+
+Once cloned, browse examples:
+
+```bash
+find tmp/tl-engine -name "*.layout.xml" -not -path "*/target/*"
+
+# And the templates themselves (authoritative argument lists):
+ls tmp/tl-engine/com.top_logic/src/main/webapp/WEB-INF/layouts/com.top_logic/*.template.xml
+```
+
+Particularly informative directories:
+- `com.top_logic.demo/.../technical/components/` — most templates, many channel patterns
+- `com.top_logic.demo/.../technical/components/tiles/` — tile / tileTable nesting
+- `com.top_logic.demo/.../technical/components/combiningChannel/` — `CombineLinking` examples
+- `com.top_logic.demo/.../technical/components/tabellenUndBaeume/` — table / tree templates
 
 ## When to invoke this skill
 

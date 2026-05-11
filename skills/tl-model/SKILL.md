@@ -190,17 +190,29 @@ The `generate-java` goal has no default phase. Bind it explicitly (the example a
 
 ## Locating example models
 
-```bash
-# In the TL engine checkout (if available):
-find tmp/tl-engine-7 -name "*.model.xml" -not -path "*/target/*"
+The TopLogic engine source contains hundreds of `*.model.xml` files exercising every construct. Clone it shallowly into the project's `tmp/` directory at the **tag matching the app's TopLogic version** (read from the `tl-parent-app` artifact version in the app's `pom.xml`):
 
-# Particularly informative files:
-#   com.top_logic.demo/.../DemoTypes.model.xml     — broad construct coverage
-#   com.top_logic.demo/.../test.dynamictable.xml   — derived attributes via storage-algorithm
-#   com.top_logic.demo/.../test.containmentContext.xml — composite + derived combo
-#   com.top_logic.demo/.../test.fallback.xml       — id-column usage
-#   com.top_logic.demo/.../test.polymorphism.xml   — inheritance + form-definition annotations
+```bash
+# Resolve the version from the app's pom (parent <version>) — e.g. 7.10.2:
+TL_VERSION=$(mvn -q help:evaluate -Dexpression=project.parent.version -DforceStdout)
+
+# Shallow clone the matching tag into ./tmp/ (gitignored in most TL apps):
+git clone --depth 1 --branch "$TL_VERSION" \
+    https://github.com/top-logic/tl-engine.git tmp/tl-engine
 ```
+
+Once cloned, browse examples:
+
+```bash
+find tmp/tl-engine -name "*.model.xml" -not -path "*/target/*"
+```
+
+Particularly informative files:
+- `com.top_logic.demo/.../DemoTypes.model.xml` — broad construct coverage
+- `com.top_logic.demo/.../test.dynamictable.model.xml` — derived attributes via `storage-algorithm`
+- `com.top_logic.demo/.../test.containmentContext.model.xml` — composite + derived combo
+- `com.top_logic.demo/.../test.fallback.model.xml` — `id-column` usage
+- `com.top_logic.demo/.../test.polymorphism.model.xml` — inheritance + `form-definition` annotations
 
 ## When to invoke this skill
 
