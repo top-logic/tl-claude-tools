@@ -29,7 +29,13 @@ The argument is the test name or path. Examples:
 
 2. **Determine the app module**: The test file lives under a module's `src/test/java/` directory. Extract the module from the path (e.g. `com.top_logic.demo`).
 
-3. **Ensure dependencies are installed**: Run `mvn install -DskipTests=true` in the app module if there are uncommitted changes or if a previous test run failed with `ClassNotFoundException` / `NoClassDefFoundError`. Skip this step if the user says "just run".
+3. **Ensure dependencies are installed**: Run `mvn install -DskipTests=true` in the app module **once** if there are uncommitted changes or if a previous test run failed with `ClassNotFoundException` / `NoClassDefFoundError`. Skip this step if the user says "just run".
+
+   **Verify build success by exit code, not by grepping output.** Pick **one** pattern, never both:
+   - **Quiet:** `mvn install -DskipTests=true -q -B` — trust Bash exit code 0 = ok. Do not pipe through `tail`/`grep`; `-q` suppresses `BUILD SUCCESS`.
+   - **Verbose:** `mvn install -DskipTests=true -B 2>&1 | tail -5` — the banner is in the last lines.
+
+   Mixing `-q` with `tail`/`grep` is a trap: side-effect logs look like a run but don't contain the banner, so you end up running a second build "to be sure". Never do that — ambiguous output is a reading problem, not a build problem.
 
 4. **Run the test** from the app module directory:
    ```bash

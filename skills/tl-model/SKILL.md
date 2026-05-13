@@ -162,6 +162,18 @@ Each class produces three files: `XxxBase.java` (interface with default methods 
 
 These show up consistently and are easy to misdiagnose:
 
+### 0. Verify build success by exit code, not by grepping output
+
+`mvn install -q` suppresses the `BUILD SUCCESS`/`BUILD FAILURE` banner. If you also pipe through `tail`/`grep`, you see side-effect logs (TopLogic service-lifecycle output, etc.) that look like a run but do not confirm success — a trap that easily leads to a second unnecessary build.
+
+Pick **one**:
+- **Quiet:** `mvn install -DskipTests=true -q -B`, then trust the Bash exit code (0 = ok). No `tail`/`grep`.
+- **Verbose:** `mvn install -DskipTests=true -B 2>&1 | tail -5`. The banner is in the last lines.
+
+Never mix `-q` with `tail`/`grep`. Never run the build a second time "to be sure" — if the exit code is ambiguous, that's a reading problem, not a build problem.
+
+The two-cycle wrapper regeneration in #1 below is an *intentional* doubled build for a specific reason, not a "safety" re-run — that exception is the one and only legitimate reason to invoke `mvn install` twice on the same model change.
+
 ### 1. The generator reads the m2-installed JAR, not your source XML
 
 `generate-java` resolves the project's own artifact via Maven and reads `*.model.xml` from inside the installed JAR. So after **renaming an attribute that produces a Java-side conflict** (see #2), one `mvn install` cannot succeed: the generator regenerates wrappers from stale m2 XML, compile fails, install never happens, m2 stays stale.

@@ -26,7 +26,27 @@ log: <app-module-path>/tmp/tl-app.log
 
 Report the URL and credentials (user `root`, password `root1234`) to the user.
 
-Build first if needed: `mvn install -DskipTests=true` in changed modules, then the app module. Skip if user says "just start".
+## Building before start
+
+If a build is needed, run `mvn install -DskipTests=true` **once** in the app module. Skip the build entirely if the user says "just start".
+
+Pick **one** of these two patterns — never combine them:
+
+- **Quiet, exit-code as success signal:**
+  ```bash
+  mvn install -DskipTests=true -q -B
+  ```
+  Trust the Bash exit code: 0 = success. Do not pipe through `tail`/`grep` — `-q` suppresses the `BUILD SUCCESS` banner, so there is nothing to grep for.
+
+- **Verbose, banner as success signal:**
+  ```bash
+  mvn install -DskipTests=true -B 2>&1 | tail -5
+  ```
+  The last lines will contain `BUILD SUCCESS` or `BUILD FAILURE`.
+
+**Never mix `-q` with `tail`/`grep` on the same invocation.** `-q` removes the banner you'd be searching for, leaving side-effect logs (TopLogic service-lifecycle output, etc.) that look like a build but do not confirm success — which then triggers a second, unnecessary build. The fix for an ambiguous result is reading the exit code, not building again.
+
+**Never run the build twice "to be sure"** — if the exit code is ambiguous, that's a reading problem, not a build problem.
 
 ## Determining the app module
 
