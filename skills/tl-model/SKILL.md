@@ -53,7 +53,17 @@ Register every model file in `WEB-INF/autoconf/<app>.config.xml`:
 
 ## Attribute types
 
-`<property>` carries primitives (literals stored on the row). `<reference>` carries links to other model instances.
+`<property>` carries primitives (literals stored on the row). `<reference>` carries links to other model instances — **including enum classifiers**.
+
+**Enums are referenced, not propertied.** An attribute typed by an `<enum>` declared in the same module (or imported from another) must be a `<reference>`, never a `<property>`. Using `<property>` is silent at startup until the first commit tries to write that attribute, then explodes as `ClassCastException: PersistentEnumeration cannot be cast to TLPrimitive` during DynamicModelService startup — a confusing error that easily gets misdiagnosed as a stale DB or migration issue.
+
+```xml
+<!-- WRONG: enum as property -->
+<property name="kind" type="my.module:Status" mandatory="true"/>
+
+<!-- RIGHT: enum as reference -->
+<reference name="kind" type="my.module:Status" mandatory="true"/>
+```
 
 ### Primitive type literals
 

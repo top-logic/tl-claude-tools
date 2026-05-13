@@ -1,6 +1,6 @@
 {
   "name": "tl-claude-tools",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Claude Code extensions for TopLogic development: skills, references, and tooling for working with the TopLogic framework and applications built on top of it.",
   "author": {
     "name": "Business Operation Systems GmbH",
