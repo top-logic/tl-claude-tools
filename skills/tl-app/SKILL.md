@@ -30,23 +30,21 @@ Report the URL and credentials (user `root`, password `root1234`) to the user.
 
 If a build is needed, run `mvn install -DskipTests=true` **once** in the app module. Skip the build entirely if the user says "just start".
 
-Pick **one** of these two patterns — never combine them:
+**Recommended pattern for TopLogic apps:**
 
-- **Quiet, exit-code as success signal:**
-  ```bash
-  mvn install -DskipTests=true -q -B
-  ```
-  Trust the Bash exit code: 0 = success. Do not pipe through `tail`/`grep` — `-q` suppresses the `BUILD SUCCESS` banner, so there is nothing to grep for.
+```bash
+mvn install -DskipTests=true -B 2>&1 | grep -E "^\[ERROR\]|BUILD (SUCCESS|FAILURE)"
+```
 
-- **Verbose, banner as success signal:**
-  ```bash
-  mvn install -DskipTests=true -B 2>&1 | tail -5
-  ```
-  The last lines will contain `BUILD SUCCESS` or `BUILD FAILURE`.
+This shows every Maven `[ERROR]` line plus the final banner — small on success (just the banner, sometimes a couple of `Resource check`-style warnings), and diagnostic on failure (each underlying error is reported on its own `[ERROR]` line, not buried in a stack trace).
 
-**Never mix `-q` with `tail`/`grep` on the same invocation.** `-q` removes the banner you'd be searching for, leaving side-effect logs (TopLogic service-lifecycle output, etc.) that look like a build but do not confirm success — which then triggers a second, unnecessary build. The fix for an ambiguous result is reading the exit code, not building again.
+Why not `-q`? TopLogic builds run an in-process app self-test as part of the install lifecycle, which boots the full service stack via log4j. Those service-lifecycle logs are not Maven output and bypass `-q` entirely — so a "quiet" build is in practice not quiet, and the visible output omits the `BUILD SUCCESS` banner that `-q` actively suppresses. The combination makes both observation (no banner) and silence (lots of side-effect logs) fail.
 
-**Never run the build twice "to be sure"** — if the exit code is ambiguous, that's a reading problem, not a build problem.
+Why not `tail -N` or `grep ... -B 5`? On failure the Maven footer (Total time, Finished at, trailing separators) sits between the banner and the actual `[ERROR]` lines — a tight window of context lines shows the banner but not the cause. Filtering on `[ERROR]` captures every cause regardless of position.
+
+**Avoid:** piping through `tail` alone, and combining `-q` with `tail`/`grep` (the banner is gone).
+
+**Never run the build twice "to be sure"** — if the result is ambiguous, that's a reading problem, not a build problem. The exit code is authoritative.
 
 ## Determining the app module
 

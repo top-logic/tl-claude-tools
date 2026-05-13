@@ -218,15 +218,13 @@ Each class produces three files: `XxxBase.java` (interface with default methods 
 
 These show up consistently and are easy to misdiagnose:
 
-### 0. Verify build success by exit code, not by grepping output
+### 0. Verifying build success
 
-`mvn install -q` suppresses the `BUILD SUCCESS`/`BUILD FAILURE` banner. If you also pipe through `tail`/`grep`, you see side-effect logs (TopLogic service-lifecycle output, etc.) that look like a run but do not confirm success — a trap that easily leads to a second unnecessary build.
+Use `mvn install -DskipTests=true -B 2>&1 | grep -E "^\[ERROR\]|BUILD (SUCCESS|FAILURE)"`. This captures every Maven `[ERROR]` line plus the final banner — small on success, diagnostic on failure (each underlying error is on its own `[ERROR]` line, not buried in a stack trace).
 
-Pick **one**:
-- **Quiet:** `mvn install -DskipTests=true -q -B`, then trust the Bash exit code (0 = ok). No `tail`/`grep`.
-- **Verbose:** `mvn install -DskipTests=true -B 2>&1 | tail -5`. The banner is in the last lines.
+Why not `-q`? TopLogic builds run an in-process app self-test that emits service-lifecycle logs via log4j; those bypass `-q` entirely, so a "quiet" build is in practice not quiet *and* suppresses the `BUILD SUCCESS` banner you'd want to see. Filtering on `[ERROR]` plus the banner avoids both problems.
 
-Never mix `-q` with `tail`/`grep`. Never run the build a second time "to be sure" — if the exit code is ambiguous, that's a reading problem, not a build problem.
+Never mix `-q` with `tail`/`grep` (the banner is suppressed). Never run the build a second time "to be sure" — if the result is ambiguous, that's a reading problem, not a build problem.
 
 The two-cycle wrapper regeneration in #1 below is an *intentional* doubled build for a specific reason, not a "safety" re-run — that exception is the one and only legitimate reason to invoke `mvn install` twice on the same model change.
 

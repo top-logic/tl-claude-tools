@@ -31,11 +31,11 @@ The argument is the test name or path. Examples:
 
 3. **Ensure dependencies are installed**: Run `mvn install -DskipTests=true` in the app module **once** if there are uncommitted changes or if a previous test run failed with `ClassNotFoundException` / `NoClassDefFoundError`. Skip this step if the user says "just run".
 
-   **Verify build success by exit code, not by grepping output.** Pick **one** pattern, never both:
-   - **Quiet:** `mvn install -DskipTests=true -q -B` — trust Bash exit code 0 = ok. Do not pipe through `tail`/`grep`; `-q` suppresses `BUILD SUCCESS`.
-   - **Verbose:** `mvn install -DskipTests=true -B 2>&1 | tail -5` — the banner is in the last lines.
+   **Recommended:** `mvn install -DskipTests=true -B 2>&1 | grep -E "^\[ERROR\]|BUILD (SUCCESS|FAILURE)"`
 
-   Mixing `-q` with `tail`/`grep` is a trap: side-effect logs look like a run but don't contain the banner, so you end up running a second build "to be sure". Never do that — ambiguous output is a reading problem, not a build problem.
+   Captures every Maven `[ERROR]` line plus the final banner — small on success, diagnostic on failure. TopLogic's in-process app self-test emits service-lifecycle logs via log4j that bypass `-q` entirely, so "quiet" builds are not quiet *and* suppress the banner; filtering on `[ERROR]` plus the banner avoids both problems.
+
+   Never mix `-q` with `tail`/`grep` (the banner is gone). Never rebuild "to be sure" — ambiguous output is a reading problem.
 
 4. **Run the test** from the app module directory:
    ```bash
