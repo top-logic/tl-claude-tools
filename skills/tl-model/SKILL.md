@@ -155,6 +155,32 @@ Files live in `src/main/webapp/WEB-INF/conf/resources/model.<module>.messages_en
 
 **Avoid** German classifier names like `<classifier name="Eröffnung"/>` — they bleed into generated Java identifiers, surface in URLs and IDs, and entangle code with one specific locale. Use `Opening` in the XML, "Eröffnung" in `messages_de.properties`. Document each type and non-obvious attribute with a `.tooltip` entry — these become the hover text users will rely on.
 
+### Properties-file encoding
+
+TopLogic follows the **Java Properties standard**: `*.properties` files are encoded in **ISO-8859-1** (Latin-1). Umlauts and other Latin-1 characters are stored as their native single-byte ISO-8859-1 representation — `Ä` is the byte `0xC4`, not the UTF-8 sequence `0xC3 0x84`. Writing the file in UTF-8 triggers the build warning `Resource check: Not normalized` and risks mojibake when read.
+
+```properties
+# Correct — Latin-1 encoded, umlauts stored as single Latin-1 bytes
+model.finanzen.TransactionKind.Opening = Eröffnung
+```
+
+**Working with these files from Claude / tooling that defaults to UTF-8:** the file/edit tools read and write UTF-8, so directly editing an ISO-8859-1 file corrupts it. Use a UTF-8 working copy and convert with `iconv`:
+
+1. Convert to UTF-8 for editing:
+   ```bash
+   iconv -f ISO-8859-1 -t UTF-8 messages_de.properties > messages_de.utf8.properties
+   ```
+
+2. Edit the UTF-8 working copy with normal tools.
+
+3. Convert back to ISO-8859-1 and replace the original:
+   ```bash
+   iconv -f UTF-8 -t ISO-8859-1 messages_de.utf8.properties > messages_de.properties
+   rm messages_de.utf8.properties
+   ```
+
+`iconv` errors out on characters that don't exist in ISO-8859-1 (e.g. `—`, `„`, `"`, `…`) — use plain ASCII substitutes (`--`, `"`, `"`, `...`) in the source, or escape them as `\uXXXX` if you really need them.
+
 ## ID / label conventions
 
 The UI displays a model instance by reading one of its primitive properties. Pick it via `<id-column value="...">` on the class.
