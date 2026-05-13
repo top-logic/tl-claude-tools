@@ -135,6 +135,26 @@ A derived `<reference name="..." multiple="true">` returns a collection from its
 
 **XML attribute escaping**: TL Script expressions inside attribute *values* (not CDATA) must escape `&` as `&amp;` and `<` as `&lt;`. Prefer the `and` / `or` keywords over `&&` / `||`, and CDATA `<expr><![CDATA[...]]></expr>` when expressions are long.
 
+## Language convention: English identifiers, localized labels
+
+Type names, attribute names, and enum classifier names in `*.model.xml` should be **English** — both for code-Java-binding consistency and for cross-locale clarity. Human-readable labels and tooltips live in `*.messages_<lang>.properties` files, **not** in the XML.
+
+Standard property keys (one entry per type/attribute/classifier, plus optional `.tooltip` for descriptions shown as hover text in the UI):
+
+```
+model.<module> = <Module label>
+model.<module>.<Type> = <Type label>
+model.<module>.<Type>.tooltip = <Type description>
+model.<module>.<Type>.<attribute> = <Attribute label>
+model.<module>.<Type>.<attribute>.tooltip = <Attribute description>
+model.<module>.<Enum>.<Classifier> = <Classifier label>
+model.<module>.<Enum>.<Classifier>.tooltip = <Classifier description>  (optional)
+```
+
+Files live in `src/main/webapp/WEB-INF/conf/resources/model.<module>.messages_en.properties` and `..._de.properties` (and similar per locale). The bundle is registered in `WEB-INF/autoconf/model.<module>.config.xml` under `ResourcesModule`.
+
+**Avoid** German classifier names like `<classifier name="Eröffnung"/>` — they bleed into generated Java identifiers, surface in URLs and IDs, and entangle code with one specific locale. Use `Opening` in the XML, "Eröffnung" in `messages_de.properties`. Document each type and non-obvious attribute with a `.tooltip` entry — these become the hover text users will rely on.
+
 ## ID / label conventions
 
 The UI displays a model instance by reading one of its primitive properties. Pick it via `<id-column value="...">` on the class.
