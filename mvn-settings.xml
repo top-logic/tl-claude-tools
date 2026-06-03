@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-	Minimal Maven settings that adds the TopLogic Nexus as a plugin repository.
-	Passed via 'mvn -s' by the tl-mcp mcpServers entry so that the tl-mcp-server
-	plugin resolves without requiring the user to modify their personal
-	~/.m2/settings.xml. Central remains the implicit default for everything else.
+	Minimal Maven settings that adds the TopLogic Nexus as both a regular
+	repository and a plugin repository. Passed via 'mvn -s' by the tl-mcp
+	mcpServers entry so that the tl-mcp-server plugin resolves AND the served
+	project's TopLogic parent POM and dependencies resolve, without requiring
+	the user to modify their personal ~/.m2/settings.xml. Central remains the
+	implicit default for everything else.
+
+	The <repositories> block is essential: the tl-mcp-server 'serve' goal reads
+	the reactor project in the working directory, which requires resolving its
+	TopLogic parent POM and dependencies. Those are normal artifacts, so a
+	<pluginRepository> alone does not cover them — without a matching
+	<repository> Maven falls back to Central, fails to find them, and the
+	server aborts on startup.
 -->
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -12,6 +21,20 @@
 	<profiles>
 		<profile>
 			<id>toplogic-nexus</id>
+			<repositories>
+				<repository>
+					<id>tl-releases</id>
+					<url>https://dev.top-logic.com/nexus/repository/toplogic/</url>
+					<releases><enabled>true</enabled></releases>
+					<snapshots><enabled>false</enabled></snapshots>
+				</repository>
+				<repository>
+					<id>tl-snapshots</id>
+					<url>https://dev.top-logic.com/nexus/repository/toplogic-snapshots/</url>
+					<releases><enabled>false</enabled></releases>
+					<snapshots><enabled>true</enabled></snapshots>
+				</repository>
+			</repositories>
 			<pluginRepositories>
 				<pluginRepository>
 					<id>tl-releases</id>
