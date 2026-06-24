@@ -64,6 +64,9 @@ TL Script is TopLogic's embedded expression language. It is used for search expr
 - `x -> expr` — single parameter. The parameter becomes a variable inside: reference as `$x`.
 - Multiple parameters are curried: `x -> y -> $x + $y`
 - Typical use: `$list.filter(x -> $x > 0)`, `$list.foreach(x -> log($x))`
+- Every value is also a constant function of any arity, so where a function is expected you can pass a
+  plain value instead of an ignoring lambda: `false` ≡ `x -> false`, `42` ≡ `x -> 42`. Useful for
+  callbacks that ignore their argument (e.g. a command action that always writes a fixed channel value).
 
 ### Control flow
 
