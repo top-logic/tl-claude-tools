@@ -27,6 +27,7 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 
 - **`tl-script`** — Reference for TL Script (TopLogic's embedded expression language). Covers surface syntax, semantics, and a search strategy for locating registered script functions. Triggers automatically when reading, writing, or debugging TL Script expressions.
 - **`tl-model`** — Reference for the dynamic-type model XML (`*.model.xml`): declaring classes / interfaces / enums, properties and references (including composite ownership and multiplicity), derived attributes via `storage-algorithm`, label / `id-column` conventions, and the wrapper-generator build wiring with its m2-cycle pitfalls.
+- **`tl-data`** — Reference for instance data (objects, not schema): the `WEB-INF/data/*.objects.xml` format (primitives, nested composites, `<model-ref>` for enums/model parts, cross-references), the `InitialDataSetupService` load-once seeding mechanism, and the instance export/import round-trip. For shipping seed/master data with an app.
 - **`tl-layout`** — Reference for layout XML (`*.layout.xml`): the template-call pattern, catalog of common templates (table, tree, tab, tile, form, …) with their inner-component selector names, channel binding (`selection(...)`, `model(...)`, `CombineLinking`), `TreeModelByExpression` / `ListModelByExpression` model builders, and the most frequent pitfalls (escape rules, `orientation` vs `horizontal`, tile-context requirements).
 - **`tl-app`** — Start, stop, or restart a TopLogic application during a Claude Code session. Ships a helper shell script that tracks the port, tails the log until the app reports ready, and reports the URL.
 - **`run-scripted-test`** — Run a TopLogic scripted test (`.script.xml`) via the generic `test.TestAll` runner. Locates the test by name or path, resolves the containing module, and invokes Maven with the right system properties.
@@ -51,6 +52,8 @@ skills/
 ├── tl-script/
 │   └── SKILL.md
 ├── tl-model/
+│   └── SKILL.md
+├── tl-data/
 │   └── SKILL.md
 ├── tl-layout/
 │   └── SKILL.md
