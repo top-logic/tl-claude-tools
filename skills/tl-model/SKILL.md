@@ -175,6 +175,22 @@ Auto-filled like (A), but because it is a stored column an **import can set it e
 
 Rule of thumb: **derive** timestamps (rarely backfilled); for an **author/reporter that must survive a bulk import**, prefer **B** (stored + `currentUser()` default), since deriving it would force a separate commit per imported object.
 
+**Reserved names.** `created`, `creator`, `modified`, `modifier` are system lifecycle attribute names (`Long` columns on every object). A *derived* attribute may reuse them (no column), but a *stored* one collides — boot fails with `Incompatible type '…' for attribute 'Item.created::Long'`. Name stored variants differently, e.g. `createDate` / `changeDate`.
+
+**No on-store hook.** No annotation runs on every commit: `default-by-expression` and object initializers (the `<init-by-expression>` in a type's `<object-initializers>`) fire only at *create*, and `value-listeners` only on a UI field change. So a stored `modified`-style attribute is set once and never advances — an **auto-updating last-change date must use (A)** (derived from `modifiedRevision()`). For a stored *create-time* date default, add `in-transaction="true"` so `now()` is computed at commit (matching the revision date), and hide it in create:
+
+```xml
+<property name="createDate" type="tl.core:DateTime">
+    <annotations>
+        <default-value>
+            <default-by-expression value="ctx -> now()" in-transaction="true"/>
+        </default-value>
+        <create-visibility value="hidden"/>
+        <visibility value="read-only"/>
+    </annotations>
+</property>
+```
+
 ## Generated numbers (sequences)
 
 To auto-assign a running number or formatted identifier at commit, annotate the attribute with a `<default-value>` provider — do **not** hand-write a create handler for this:
