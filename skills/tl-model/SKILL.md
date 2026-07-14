@@ -144,6 +144,37 @@ A derived `<reference name="..." multiple="true">` returns a collection from its
 
 **XML attribute escaping**: TL Script expressions inside attribute *values* (not CDATA) must escape `&` as `&amp;` and `<` as `&lt;`. Prefer the `and` / `or` keywords over `&&` / `||`, and CDATA `<expr><![CDATA[...]]></expr>` when expressions are long.
 
+## Creation / modification dates and authors
+
+Every persistent object carries a full KB revision history, so "created / modified" and "who created it" need no bookkeeping — but there are two modelling choices with different trade-offs:
+
+**A. Derive from the revision history (no stored column).** A `<storage-algorithm>` reading the object's create / last-change revision:
+
+```xml
+<!-- created -->  x -> $x.createRevision().get(`tl.core:Revision#date`)
+<!-- modified --> x -> $x.modifiedRevision().get(`tl.core:Revision#date`)
+<!-- author -->   x -> $x.createRevision().get(`tl.core:Revision#author`)
+```
+
+`Revision#date` is a `DateTime`; `Revision#author` is a `tl.core:Author` (an interface `Person` implements — type such a derived reference as `tl.core:Author`, not `Person`, so technical/unresolved authors still fit). Always accurate and un-spoofable, but **not settable** — preserving historical values on import means replaying history (one commit per change, committed as the original author). Fine for timestamps you never backfill.
+
+**B. Store it, defaulting to the current user / now at creation.** A real attribute with a computed default:
+
+```xml
+<reference name="author" type="tl.accounts:Person">
+    <annotations>
+        <default-value>
+            <default-by-expression value="ctx -> currentUser()"/>
+        </default-value>
+        <visibility value="read-only"/>   <!-- auto-fill and lock in the UI; omit to keep editable -->
+    </annotations>
+</reference>
+```
+
+Auto-filled like (A), but because it is a stored column an **import can set it explicitly** (`read-only` is only a UI constraint), preserving the original author/date in a single transaction.
+
+Rule of thumb: **derive** timestamps (rarely backfilled); for an **author/reporter that must survive a bulk import**, prefer **B** (stored + `currentUser()` default), since deriving it would force a separate commit per imported object.
+
 ## Generated numbers (sequences)
 
 To auto-assign a running number or formatted identifier at commit, annotate the attribute with a `<default-value>` provider — do **not** hand-write a create handler for this:
