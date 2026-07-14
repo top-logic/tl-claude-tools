@@ -69,6 +69,15 @@ Register every model file in `WEB-INF/autoconf/<app>.config.xml`:
 
 `tl.core:String`, `Integer`, `Long`, `Boolean`, `Double`, `Float`, `Date`, `DateTime`, `Time`, `Duration`, `Binary`, `Icon`, `Name`, `Password`, `Text`, `Tristate`, `Revision`.
 
+### Internationalized and rich text
+
+For human-readable prose that should be translatable, prefer the internationalized value types over `tl.core:String`/`Text`. They live in module `tl.model.i18n` (shipped by `tl-model-wysiwyg`, normally already on the classpath of an app built on `tl-parent-app`):
+
+- `tl.model.i18n:I18NString` — a single-line string carrying a separate value per language (good for titles/summaries).
+- `tl.model.i18n:I18NHtml` — internationalized rich text, edited with a WYSIWYG (CKEditor) control; the right home for description/comment bodies and any wiki-/HTML-style content.
+
+`tl.core:Html` is the non-internationalized rich-text variant. Author prose in the source language; other languages stay empty for later translation. Use these instead of a plain `Text` whenever content is user-facing and either formatted or shown to a mixed-language audience.
+
 ### Property example
 
 ```xml
@@ -134,6 +143,34 @@ The expression is a single-argument lambda (`<receiver> -> <expression>`) whose 
 A derived `<reference name="..." multiple="true">` returns a collection from its expression. Without `ordered="true"`, duplicates collapse into a set.
 
 **XML attribute escaping**: TL Script expressions inside attribute *values* (not CDATA) must escape `&` as `&amp;` and `<` as `&lt;`. Prefer the `and` / `or` keywords over `&&` / `||`, and CDATA `<expr><![CDATA[...]]></expr>` when expressions are long.
+
+## Generated numbers (sequences)
+
+To auto-assign a running number or formatted identifier at commit, annotate the attribute with a `<default-value>` provider — do **not** hand-write a create handler for this:
+
+- integer attribute → `com.top_logic.element.structured.util.SequenceDefaultProvider`
+- string attribute with formatting (e.g. `%NUMBER%` plus a number/date pattern) → `com.top_logic.element.structured.util.NumberHandlerDefaultProvider`
+
+```xml
+<property name="number" type="tl.core:Integer">
+    <annotations>
+        <default-value>
+            <provider class="com.top_logic.element.structured.util.SequenceDefaultProvider"
+                sequence-name="my.module.Thing.number"
+            >
+                <!-- Optional: restart the sequence per creation context (e.g. per container). -->
+                <dynamic-sequence-name class="com.top_logic.element.structured.util.ContextAwareSequenceName"/>
+            </provider>
+        </default-value>
+        <create-visibility value="hidden"/>
+        <visibility value="read-only"/>
+    </annotations>
+</property>
+```
+
+The number is allocated during **commit** (to stay gap-free), so the attribute must be hidden in the create form (`<create-visibility value="hidden"/>`) and is normally `read-only`. `ContextAwareSequenceName` scopes the sequence to the object passed as the *creation context* — the container relative to which the object is created — so each context restarts at 1 (e.g. per-project ticket numbers). Omit `<dynamic-sequence-name>` for a single global sequence.
+
+**Limitation — context and numbered object created in one transaction (TL #29380):** context-aware numbering builds the sequence discriminator from `context.tId()`. If the context object is created in the *same* transaction as the numbered object (e.g. an instance editor or an import that creates container and child in one commit), the context is still transient (`tId() == null`) and generation fails with a `NullPointerException` that rolls back the whole save. Avoid it by committing the context object first, or by supplying the number explicitly on import (a provided value skips the default). A global sequence (no `dynamic-sequence-name`) is never affected.
 
 ## Language convention: English identifiers, localized labels
 
