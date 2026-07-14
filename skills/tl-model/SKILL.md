@@ -203,6 +203,40 @@ The number is allocated during **commit** (to stay gap-free), so the attribute m
 
 **Limitation — context and numbered object created in one transaction (TL #29380):** context-aware numbering builds the sequence discriminator from `context.tId()`. If the context object is created in the *same* transaction as the numbered object (e.g. an instance editor or an import that creates container and child in one commit), the context is still transient (`tId() == null`) and generation fails with a `NullPointerException` that rolls back the whole save. Avoid it by committing the context object first, or by supplying the number explicitly on import (a provided value skips the default). A global sequence (no `dynamic-sequence-name`) is never affected.
 
+## Referential integrity: scoping options and preventing cycles
+
+Two complementary annotations keep references pointing at *valid* targets. They operate at different layers — combine them.
+
+**Scope the candidate list with `<options>`.** An `options-by-expression` computes the selectable values for a reference from the edited object (`self`), e.g. restrict a ticket's `component` to its own project's components:
+
+```xml
+<reference name="components" type="Component" multiple="true">
+    <annotations>
+        <options>
+            <options-by-expression function="self -> $self.get(`m:Ticket#project`).get(`m:Project#components`)"/>
+        </options>
+    </annotations>
+</reference>
+```
+
+Use the CDATA `<function><![CDATA[self -> { ... }]]></function>` form for multi-line logic (guard a null container with `if($x == null, null, …)`). **Caveat:** options only constrain what the *UI offers* — a programmatic write or an import can still set an out-of-scope value. For a hard guarantee use a constraint.
+
+**Enforce rules at commit with `<constraints>`.** A `<constraint-by-expression>` runs a check `value -> object -> <error ResKey or null>` and rejects the transaction on violation (works for imports too). For the specific and common "this reference graph must stay acyclic" rule, use the built-in check instead of hand-rolling it:
+
+```xml
+<reference name="children" type="Ticket" inverse-reference="parent" kind="forwards" multiple="true">
+    <annotations>
+        <constraints>
+            <constraint class="com.top_logic.model.util.NoAttributeCycle"/>
+        </constraints>
+    </annotations>
+</reference>
+```
+
+`NoAttributeCycle` walks the whole reachable graph, so it rejects **deep/indirect** cycles (`a → b → c → a`), not just direct self-references — do **not** reimplement this with a `recursion()`-based options filter, which only sees immediate neighbours and is bypassable. Put it on **one** (the forwards) side of an inverse pair: editing either end updates the inverse, which triggers the constrained side. For a cycle that can span **several different** references, set `additional-observed-references` to the others (and add a matching `NoAttributeCycle` on each).
+
+Rule of thumb: `<options>` for a clean candidate list (UX), `NoAttributeCycle` / `<constraint-by-expression>` for integrity that must hold regardless of how the value is written.
+
 ## Language convention: English identifiers, localized labels
 
 Type names, attribute names, and enum classifier names in `*.model.xml` should be **English** — both for code-Java-binding consistency and for cross-locale clarity. Human-readable labels and tooltips live in `*.messages_<lang>.properties` files, **not** in the XML.
