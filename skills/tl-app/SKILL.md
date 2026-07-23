@@ -53,3 +53,12 @@ If not specified: check current directory, check recent git changes, default to 
 ## Database / `tmp/` directory
 
 **Do NOT delete `tmp/`** unless an incompatible model change was made without a data migration (e.g. back-and-forth model changes during development), or the user explicitly asks. Adding new modules does NOT require deletion. Deleting forces slow full re-initialization and destroys test data.
+
+## Verifying in the browser
+
+Once the app is running, verification usually continues with Playwright. Screenshots are images and are by far the most token-expensive input available — a handful of them can dwarf all the build and log output combined. Default to the cheaper tool and reserve pixels for when you actually need to see them.
+
+- **Default to `browser_snapshot`** (accessibility tree + text) for everything you can check from structure or content: element presence, labels, values, enabled/disabled state, list contents, whether a dialog opened, whether navigation landed on the right page. This is also easier to assert against than an image.
+- **Use `browser_take_screenshot` only for genuinely visual checks** that the snapshot cannot answer: layout/alignment, spacing, colors, theming, icon rendering, overflow/clipping, chart or diagram appearance. When you do screenshot, take **one targeted shot** (a specific element/region) rather than repeated full-page captures.
+- **Don't screenshot to confirm a click worked** — take a `browser_snapshot` after the interaction and read the resulting state.
+- **One confirming shot at the end** is fine for a visual feature; a screenshot after every step is the pattern to avoid.
