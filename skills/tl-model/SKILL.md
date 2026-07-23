@@ -299,6 +299,16 @@ model.finanzen.TransactionKind.Opening = Eröffnung
 
 `iconv` errors out on characters that don't exist in ISO-8859-1 (e.g. `—`, `„`, `"`, `…`) — use plain ASCII substitutes (`--`, `"`, `"`, `...`) in the source, or escape them as `\uXXXX` if you really need them.
 
+### Normalizing resource files
+
+After editing a bundle under `WEB-INF/conf/resources/`, normalize it — otherwise the build's `Resource check: Not normalized` warning fails conformance:
+
+```bash
+mvn -N tl:normalize-resource-file -Dresource=<path-to-.properties>
+```
+
+The `-N` (non-recursive) flag is essential: without it Maven resolves the full reactor (including GWT modules) and the command fails.
+
 ## ID / label conventions
 
 The UI displays a model instance by reading one of its primitive properties. Pick it via `<id-column value="...">` on the class.
