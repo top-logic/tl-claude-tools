@@ -56,9 +56,14 @@ If not specified: check current directory, check recent git changes, default to 
 
 ## Verifying in the browser
 
-Once the app is running, verification usually continues with Playwright. Screenshots are images and are by far the most token-expensive input available — a handful of them can dwarf all the build and log output combined. Default to the cheaper tool and reserve pixels for when you actually need to see them.
+Once the app is running, verification usually continues with Playwright. This is the token-expensive part — not because of any single call, but because a verification session is hundreds of browser round-trips and every turn re-sends the whole conversation context, which in a long session is enormous.
 
-- **Default to `browser_snapshot`** (accessibility tree + text) for everything you can check from structure or content: element presence, labels, values, enabled/disabled state, list contents, whether a dialog opened, whether navigation landed on the right page. This is also easier to assert against than an image.
-- **Use `browser_take_screenshot` only for genuinely visual checks** that the snapshot cannot answer: layout/alignment, spacing, colors, theming, icon rendering, overflow/clipping, chart or diagram appearance. When you do screenshot, take **one targeted shot** (a specific element/region) rather than repeated full-page captures.
-- **Don't screenshot to confirm a click worked** — take a `browser_snapshot` after the interaction and read the resulting state.
-- **One confirming shot at the end** is fine for a visual feature; a screenshot after every step is the pattern to avoid.
+**Delegate the interaction loop to a sub-agent.** Start the app here (cheap, one-shot), then hand the browser work to a sub-agent (the `Agent` tool) that begins from a near-empty context, so those hundreds of turns re-bill a small context instead of the main thread's large one. Only a compact pass/fail report returns.
+
+- Give the sub-agent a **self-contained brief** — it has none of the main conversation's context. Include the app URL, the exact path to the feature, the steps to perform, the expected outcome for each, and the login (`root` / `root1234`).
+- Keep the fix-the-code work in the main thread; the sub-agent only verifies and reports.
+
+Within the loop, **prefer `browser_snapshot` over `browser_take_screenshot`** — the accessibility-tree text is easier to assert against, and a screenshot is heavier per call:
+
+- **Default to `browser_snapshot`** for anything checkable from structure or content: element presence, labels, values, enabled/disabled state, list contents, whether a dialog opened, whether navigation landed on the right page.
+- **Use `browser_take_screenshot` only for genuinely visual checks** the snapshot cannot answer: layout/alignment, spacing, colors, theming, icon rendering, overflow/clipping, chart or diagram appearance — then take one targeted shot rather than repeated full-page captures.
