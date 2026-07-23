@@ -54,6 +54,8 @@ If not specified: check current directory, check recent git changes, default to 
 
 **Do NOT delete `tmp/`** unless an incompatible model change was made without a data migration (e.g. back-and-forth model changes during development), or the user explicitly asks. Adding new modules does NOT require deletion. Deleting forces slow full re-initialization and destroys test data.
 
+**Exception — a changed/unknown `root` password.** `root` / `root1234` is the login only on a *freshly* initialized DB. A `tmp/app-data` DB left over from earlier sessions may have had its password changed (login then logs `Log-in attempt for account with wrong password denied: root`). A password that blocks all login is a legitimate reason to `rm -rf <app>/tmp` and restart (full re-import, slow).
+
 ## Verifying in the browser
 
 Once the app is running, verification usually continues with Playwright. This is the token-expensive part — not because of any single call, but because a verification session is hundreds of browser round-trips and every turn re-sends the whole conversation context, which in a long session is enormous.
