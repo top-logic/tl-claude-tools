@@ -38,7 +38,7 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 
   **No `~/.m2/settings.xml` changes needed.** The plugin ships its own `mvn-settings.xml` (at the plugin root) that declares the TopLogic Nexus as a plugin repository, and `tl-mcp-serve.sh` passes it via `mvn -s`. Maven downloads the `com.top-logic:tl-mcp-server` artifact — pinned to a single version in `tl-mcp-serve.sh` — from <https://dev.top-logic.com/nexus/repository/toplogic/> on first invocation and caches it in `~/.m2/repository`.
 
-  **Source for external dependencies.** Before starting the server, the wrapper runs `mvn dependency:sources` (best-effort, output on stderr) so `show_source` can serve source for external dependencies and not just reactor modules. Artifacts without published sources are skipped, and the server still starts offline.
+  **Source for external dependencies.** Alongside the server, the wrapper runs `mvn dependency:sources` in the background (best-effort, output on stderr) so `show_source` can serve source for external dependencies and not just reactor modules. It runs concurrently rather than in front of the server because the reactor-wide pass alone takes most of the MCP client's 30 s connect window. Artifacts without published sources are skipped, and the server still starts offline.
 
   Outside a Maven project the server fails fast; disable it via `/mcp` if you don't need it.
 
@@ -52,7 +52,7 @@ The plugin layout follows the [Claude Code plugin reference](https://code.claude
 └── marketplace.json    # marketplace catalog
 .mcp.json               # MCP server registration (tl-mcp)
 mvn-settings.xml        # Maven settings declaring the TopLogic Nexus
-tl-mcp-serve.sh         # tl-mcp launcher: pre-fetch dependency sources, then serve
+tl-mcp-serve.sh         # tl-mcp launcher: serve, pre-fetching dependency sources in the background
 skills/
 ├── tl-script/
 │   └── SKILL.md
