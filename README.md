@@ -36,7 +36,7 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 
 - **`tl-mcp`** — Indexes the Java type graph (classes, members, annotations, references, call graph, source snippets) of the current Maven reactor and serves structured queries over MCP. Exposes `query_types`, `describe_type`, `list_members`, `references_to`, `callers_of`, `field_accessors`, `module_of`, `show_source`, and — for a web application reactor — the application's web resource tree (stacked `src/main/webapp` dirs and `-web-fragment.war` overlays) via `list_resources`, `find_resources`, `read_resource`, `resource_overlays`. When it is available, the agent should prefer these tools over filesystem `grep`/`find` for Java navigation — the MCP server ships an `instructions` block that tells the LLM exactly when and how. Launched via the `tl-mcp-serve.sh` wrapper (at the plugin root) in the project's working directory, so Claude Code sessions opened inside a Maven reactor get it automatically.
 
-  **No `~/.m2/settings.xml` changes needed.** The plugin ships its own `mvn-settings.xml` (at the plugin root) that declares the TopLogic Nexus as a plugin repository, and `tl-mcp-serve.sh` passes it via `mvn -s`. Maven downloads the `com.top-logic:tl-mcp-server` artifact — pinned to a single version in `tl-mcp-serve.sh` — from <https://dev.top-logic.com/nexus/repository/toplogic/> on first invocation and caches it in `~/.m2/repository`.
+  **No manual `~/.m2/settings.xml` edits needed.** The plugin ships a `mvn-settings.xml` (at the plugin root) declaring the TopLogic Nexus as a repository and plugin repository. Rather than swapping that file in wholesale via `mvn -s` — which would silently drop any mirrors, server credentials, or `localRepository` override in your own Maven config — `tl-mcp-serve.sh` merges its `toplogic-nexus` profile into your own `~/.m2/settings.xml` on server start, creating the file if it doesn't exist and skipping the merge if the profile is already there. Your own settings stay authoritative; the merged-in profile is just a fallback so the `com.top-logic:tl-mcp-server` artifact — pinned to a single version in `tl-mcp-serve.sh` — and the TopLogic parent POM resolve even without it. Maven caches these in `~/.m2/repository`. If the merge fails (e.g. an existing `settings.xml` the wrapper can't safely edit), it falls back to the plugin's bundled file for that run and warns on stderr.
 
   **Source for external dependencies.** Alongside the server, the wrapper runs `mvn dependency:sources` in the background (best-effort, output on stderr) so `show_source` can serve source for external dependencies and not just reactor modules. It runs concurrently rather than in front of the server because the reactor-wide pass alone takes most of the MCP client's 30 s connect window. Artifacts without published sources are skipped, and the server still starts offline.
 
@@ -51,7 +51,7 @@ The plugin layout follows the [Claude Code plugin reference](https://code.claude
 ├── plugin.json         # plugin manifest
 └── marketplace.json    # marketplace catalog
 .mcp.json               # MCP server registration (tl-mcp)
-mvn-settings.xml        # Maven settings declaring the TopLogic Nexus
+mvn-settings.xml        # Source of the toplogic-nexus profile; tl-mcp-serve.sh merges it into ~/.m2/settings.xml
 tl-mcp-serve.sh         # tl-mcp launcher: serve, pre-fetching dependency sources in the background
 skills/
 ├── tl-script/

@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 	Minimal Maven settings that adds the TopLogic Nexus as both a regular
-	repository and a plugin repository. Passed via 'mvn -s' by the tl-mcp
-	mcpServers entry so that the tl-mcp-server plugin resolves AND the served
-	project's TopLogic parent POM and dependencies resolve, without requiring
-	the user to modify their personal ~/.m2/settings.xml. Central remains the
-	implicit default for everything else.
+	repository and a plugin repository, so the tl-mcp-server plugin resolves
+	AND the served project's TopLogic parent POM and dependencies resolve.
+	Central remains the implicit default for everything else.
+
+	This file is the source tl-mcp-serve.sh merges its toplogic-nexus profile
+	from into the user's own ~/.m2/settings.xml (creating that file if it
+	doesn't exist), rather than passing this file straight to 'mvn -s' -
+	doing that would replace the user's settings for the run instead of
+	merging with them, silently dropping any mirrors, server credentials, or
+	localRepository override of their own. This file is only passed to
+	'-s' directly as a fallback, if that merge itself fails.
 
 	The <repositories> block is essential: the tl-mcp-server 'serve' goal reads
 	the reactor project in the working directory, which requires resolving its
