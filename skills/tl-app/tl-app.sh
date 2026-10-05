@@ -41,7 +41,7 @@ pick_free_port() {
     local port
     for _ in $(seq 1 50); do
         port=$(( RANDOM % 50000 + 10000 ))
-        if ! ss -tlnH "sport = :$port" 2>/dev/null | grep -q .; then
+        if ! is_port_in_use "$port"; then
             echo "$port"
             return 0
         fi
@@ -66,7 +66,15 @@ clear_port() {
 }
 
 is_port_in_use() {
-    ss -tlnH "sport = :$1" 2>/dev/null | grep -q .
+    if command -v ss > /dev/null 2>&1; then
+        ss -tlnH "sport = :$1" 2>/dev/null | grep -q .
+        return
+    fi
+    # No ss on macOS and in Git Bash on Windows: use netstat. Its state column
+    # is localized on Windows (e.g. not "LISTENING" in German), so a listening TCP
+    # socket is recognized by its missing remote end instead: "0.0.0.0:0" or
+    # "[::]:0" on Windows, "*.*" on macOS.
+    netstat -an 2>/dev/null | grep -aqE "[.:]$1[[:space:]]+(0\.0\.0\.0:0|\[::\]:0|\*\.\*)([[:space:]]|$)"
 }
 
 do_stop() {

@@ -1,7 +1,8 @@
 {
   "tl-mcp": {
-    "command": "${CLAUDE_PLUGIN_ROOT}/tl-mcp-serve.sh",
+    "command": "java",
     "args": [
+      "${CLAUDE_PLUGIN_ROOT}/TlMcpServe.java",
       "${CLAUDE_PLUGIN_ROOT}/mvn-settings.xml"
     ]
   }

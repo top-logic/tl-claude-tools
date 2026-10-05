@@ -13,6 +13,14 @@ In Claude Code:
 /plugin install tl-claude-tools@toplogic
 ```
 
+If adding the marketplace fails because GitHub is cloned via SSH (no SSH key or `known_hosts` entry), add it by its HTTPS URL instead:
+
+```
+/plugin marketplace add https://github.com/top-logic/tl-claude-tools.git
+```
+
+**Requirements:** a JDK (11 or newer) and Maven, both on `PATH` — for `tl-mcp`, `tl-app` and `run-scripted-test`. Works on Linux, macOS and Windows; on Windows the skill scripts run in the Git Bash that Claude Code uses (`winget install Microsoft.OpenJDK.17`, Maven from <https://maven.apache.org/download.cgi>).
+
 To track the rolling main branch (default), no further pinning is needed. For a stable pin:
 
 ```
@@ -34,11 +42,11 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 
 ### MCP servers
 
-- **`tl-mcp`** — Indexes the Java type graph (classes, members, annotations, references, call graph, source snippets) of the current Maven reactor and serves structured queries over MCP. Exposes `query_types`, `describe_type`, `list_members`, `references_to`, `callers_of`, `field_accessors`, `module_of`, `show_source`, and — for a web application reactor — the application's web resource tree (stacked `src/main/webapp` dirs and `-web-fragment.war` overlays) via `list_resources`, `find_resources`, `read_resource`, `resource_overlays`. When it is available, the agent should prefer these tools over filesystem `grep`/`find` for Java navigation — the MCP server ships an `instructions` block that tells the LLM exactly when and how. Launched via the `tl-mcp-serve.sh` wrapper (at the plugin root) in the project's working directory, so Claude Code sessions opened inside a Maven reactor get it automatically.
+- **`tl-mcp`** — Indexes the Java type graph (classes, members, annotations, references, call graph, source snippets) of the current Maven reactor and serves structured queries over MCP. Exposes `query_types`, `describe_type`, `list_members`, `references_to`, `callers_of`, `field_accessors`, `module_of`, `show_source`, and — for a web application reactor — the application's web resource tree (stacked `src/main/webapp` dirs and `-web-fragment.war` overlays) via `list_resources`, `find_resources`, `read_resource`, `resource_overlays`. When it is available, the agent should prefer these tools over filesystem `grep`/`find` for Java navigation — the MCP server ships an `instructions` block that tells the LLM exactly when and how. Launched via the `TlMcpServe.java` launcher (at the plugin root, run by `java` as a single-file program, so the same entry works on Linux, macOS and Windows) in the project's working directory, so Claude Code sessions opened inside a Maven reactor get it automatically.
 
-  **No `~/.m2/settings.xml` changes needed.** The plugin ships its own `mvn-settings.xml` (at the plugin root) that declares the TopLogic Nexus as a plugin repository, and `tl-mcp-serve.sh` passes it via `mvn -s`. Maven downloads the `com.top-logic:tl-mcp-server` artifact — pinned to a single version in `tl-mcp-serve.sh` — from <https://dev.top-logic.com/nexus/repository/toplogic/> on first invocation and caches it in `~/.m2/repository`.
+  **No `~/.m2/settings.xml` changes needed.** The plugin ships its own `mvn-settings.xml` (at the plugin root) that declares the TopLogic Nexus as a plugin repository, and the launcher passes it via `mvn -s`. Maven downloads the `com.top-logic:tl-mcp-server` artifact — pinned to a single version in `TlMcpServe.java` — from <https://dev.top-logic.com/nexus/repository/toplogic/> on first invocation and caches it in `~/.m2/repository`.
 
-  **Source for external dependencies.** Alongside the server, the wrapper runs `mvn dependency:sources` in the background (best-effort, output on stderr) so `show_source` can serve source for external dependencies and not just reactor modules. It runs concurrently rather than in front of the server because the reactor-wide pass alone takes most of the MCP client's 30 s connect window. Artifacts without published sources are skipped, and the server still starts offline.
+  **Source for external dependencies.** Alongside the server, the launcher runs `mvn dependency:sources` in the background (best-effort, output on stderr) so `show_source` can serve source for external dependencies and not just reactor modules. It runs concurrently rather than in front of the server because the reactor-wide pass alone takes most of the MCP client's 30 s connect window. Artifacts without published sources are skipped, and the server still starts offline.
 
   Outside a Maven project the server fails fast; disable it via `/mcp` if you don't need it.
 
@@ -52,7 +60,7 @@ The plugin layout follows the [Claude Code plugin reference](https://code.claude
 └── marketplace.json    # marketplace catalog
 .mcp.json               # MCP server registration (tl-mcp)
 mvn-settings.xml        # Maven settings declaring the TopLogic Nexus
-tl-mcp-serve.sh         # tl-mcp launcher: serve, pre-fetching dependency sources in the background
+TlMcpServe.java         # tl-mcp launcher: serve, pre-fetching dependency sources in the background
 skills/
 ├── tl-script/
 │   └── SKILL.md
