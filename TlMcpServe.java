@@ -54,8 +54,9 @@ import java.util.List;
  * <p>
  * Usage: {@code java TlMcpServe.java <mvn-settings.xml> [extra mvn args...]}.
  * The settings file (the plugin's mvn-settings.xml, declaring the TopLogic
- * Nexus) is passed by .mcp.json via ${CLAUDE_PLUGIN_ROOT}; the server runs in
- * the client's working directory, so no target pom needs to be named.
+ * Nexus) is passed by .mcp.json via ${CLAUDE_PLUGIN_ROOT}. When the working
+ * directory has no pom.xml (e.g. a Git root with the Maven project one level
+ * down), the launcher searches for one and passes it to Maven with {@code -f}.
  * </p>
  */
 public class TlMcpServe {
@@ -78,8 +79,14 @@ public class TlMcpServe {
 			System.exit(2);
 		}
 		String settings = args[0];
-		List<String> extra = List.of(args).subList(1, args.length);
 		String coord = System.getenv().getOrDefault("TL_MCP_COORD", DEFAULT_COORD);
+		List<String> extra = new ArrayList<>(List.of(args).subList(1, args.length));
+		File pom = findPom();
+		if (pom != null) {
+			System.err.println("tl-mcp: using " + pom.getAbsolutePath());
+			extra.add("-f");
+			extra.add(pom.getAbsolutePath());
+		}
 
 		Process prefetch = startPrefetch(settings, extra);
 
@@ -170,6 +177,46 @@ public class TlMcpServe {
 		for (ProcessHandle target : targets) {
 			destroyTree(target);
 		}
+	}
+
+	/**
+	 * Finds the project pom.xml when the working directory does not contain one.
+	 * Search order: cwd, single child directory with a pom, parent directories.
+	 * Returns {@code null} if ambiguous or not found (Maven's own error is clear enough).
+	 */
+	private static File findPom() {
+		File cwd = new File(".").getAbsoluteFile().getParentFile();
+		if (new File(cwd, "pom.xml").isFile()) {
+			return null; // already in the right directory
+		}
+		// Depth-1 child directories.
+		File[] children = cwd.listFiles(File::isDirectory);
+		if (children != null) {
+			File match = null;
+			String cwdName = cwd.getName();
+			for (File child : children) {
+				if (new File(child, "pom.xml").isFile()) {
+					if (child.getName().equals(cwdName)) {
+						return new File(child, "pom.xml"); // exact repo-name match wins
+					}
+					if (match != null) {
+						match = null;
+						break; // ambiguous: more than one child has a pom
+					}
+					match = child;
+				}
+			}
+			if (match != null) {
+				return new File(match, "pom.xml");
+			}
+		}
+		// Walk up to parent directories.
+		for (File dir = cwd.getParentFile(); dir != null; dir = dir.getParentFile()) {
+			if (new File(dir, "pom.xml").isFile()) {
+				return new File(dir, "pom.xml");
+			}
+		}
+		return null;
 	}
 
 	/** mvn -s settings -q; on Windows Maven's launcher is mvn.cmd. */
