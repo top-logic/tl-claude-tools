@@ -54,7 +54,7 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 
 ### Hooks
 
-- **`tl-docs-index`** (`SessionStart`) — announces the developer articles of the workspace: prints the index (name and "when to read" description of each article) that `tl-mcp` writes to `target/tl-docs-index.md` at startup, which Claude Code adds to the session context. Before the server has run once in the workspace, it prints a single line pointing to `list_docs`; outside a TopLogic Maven project it prints nothing. New articles need no plugin change.
+- **`tl-docs-index`** (`SessionStart`) — announces the developer articles of the workspace: prints the index (name and "when to read" description of each article) that `tl-mcp` writes to `target/tl-docs-index.md` at startup, which Claude Code adds to the session context. Before the server has run once in the workspace, it prints a single line pointing to `list_docs`; outside a TopLogic Maven project it prints nothing. It locates the project like the `tl-mcp` launcher (session directory, a child directory with the pom, or a parent). New articles need no plugin change.
 
 ## Development
 

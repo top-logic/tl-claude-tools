@@ -62,7 +62,7 @@ import java.util.List;
 public class TlMcpServe {
 
 	/** Coordinate of the serve goal; override with TL_MCP_COORD when testing a build. */
-	private static final String DEFAULT_COORD = "com.top-logic:tl-mcp-server:0.1.1";
+	private static final String DEFAULT_COORD = "com.top-logic:tl-mcp-server:0.1.3";
 
 	private static final boolean WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
@@ -181,33 +181,33 @@ public class TlMcpServe {
 
 	/**
 	 * Finds the project pom.xml when the working directory does not contain one.
-	 * Search order: cwd, single child directory with a pom, parent directories.
-	 * Returns {@code null} if ambiguous or not found (Maven's own error is clear enough).
+	 * Search order: cwd, the child directory named like cwd, the only child
+	 * directory with a pom, parent directories. Returns {@code null} if the pom is
+	 * in cwd or none is found (Maven's own error is clear enough). The
+	 * tl-docs-index hook locates the project the same way.
 	 */
 	private static File findPom() {
 		File cwd = new File(".").getAbsoluteFile().getParentFile();
 		if (new File(cwd, "pom.xml").isFile()) {
 			return null; // already in the right directory
 		}
-		// Depth-1 child directories.
+		File named = new File(new File(cwd, cwd.getName()), "pom.xml");
+		if (named.isFile()) {
+			return named;
+		}
 		File[] children = cwd.listFiles(File::isDirectory);
 		if (children != null) {
 			File match = null;
-			String cwdName = cwd.getName();
+			int count = 0;
 			for (File child : children) {
-				if (new File(child, "pom.xml").isFile()) {
-					if (child.getName().equals(cwdName)) {
-						return new File(child, "pom.xml"); // exact repo-name match wins
-					}
-					if (match != null) {
-						match = null;
-						break; // ambiguous: more than one child has a pom
-					}
-					match = child;
+				File pom = new File(child, "pom.xml");
+				if (pom.isFile()) {
+					match = pom;
+					count++;
 				}
 			}
-			if (match != null) {
-				return new File(match, "pom.xml");
+			if (count == 1) {
+				return match;
 			}
 		}
 		// Walk up to parent directories.
