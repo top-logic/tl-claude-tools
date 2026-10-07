@@ -29,7 +29,7 @@ SETTINGS="$1"
 shift
 
 # Coordinate of the serve goal; override with TL_MCP_COORD when testing a build.
-TL_MCP_COORD="${TL_MCP_COORD:-com.top-logic:tl-mcp-server:0.1.2}"
+TL_MCP_COORD="${TL_MCP_COORD:-com.top-logic:tl-mcp-server:0.1.3}"
 
 mvn -s "$SETTINGS" -q -fn dependency:sources "$@" </dev/null 1>&2 &
 

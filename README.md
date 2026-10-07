@@ -42,7 +42,7 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 
   Outside a Maven project the server fails fast; disable it via `/mcp` if you don't need it.
 
-  **Developer articles.** The `list_docs` / `read_doc` tools serve the Markdown articles the modules of the workspace ship as `META-INF/tl-docs/*.md` in their jars, so an application workspace finds the engine's developer documentation for exactly the engine version it builds against.
+  **Developer articles.** The `list_docs` / `read_doc` tools serve the Markdown articles the modules of the workspace ship below `META-INF/tl-docs/` in their jars (folders are chapters; `doc:<name>#<section>` links between articles can be passed to `read_doc` as they stand), so an application workspace finds the engine's developer documentation for exactly the engine version it builds against.
 
 ### Hooks
 
