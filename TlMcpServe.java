@@ -66,6 +66,9 @@ public class TlMcpServe {
 
 	private static final boolean WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
+	/** tl-mcp-server is compiled for Java 17 (class file version 61). */
+	private static final int MIN_JAVA = 17;
+
 	/** Internal mode: {@code --watch <launcher-pid> <pid>...}, see {@link #watch(String[])}. */
 	private static final String WATCH = "--watch";
 
@@ -77,6 +80,11 @@ public class TlMcpServe {
 		if (args.length < 1) {
 			System.err.println("Usage: java TlMcpServe.java <mvn-settings.xml> [extra mvn args...]");
 			System.exit(2);
+		}
+		if (Runtime.version().feature() < MIN_JAVA) {
+			System.err.println("tl-mcp: needs Java " + MIN_JAVA + " or newer, but 'java' on the PATH is "
+				+ Runtime.version() + " (" + System.getProperty("java.home") + ").");
+			System.exit(1);
 		}
 		String settings = args[0];
 		String coord = System.getenv().getOrDefault("TL_MCP_COORD", DEFAULT_COORD);
@@ -93,7 +101,7 @@ public class TlMcpServe {
 		List<String> serve = mvn(settings);
 		serve.add(coord + ":serve");
 		serve.addAll(extra);
-		Process server = new ProcessBuilder(serve)
+		Process server = maven(serve)
 			.redirectOutput(ProcessBuilder.Redirect.INHERIT)
 			.redirectError(ProcessBuilder.Redirect.INHERIT)
 			.start();
@@ -123,7 +131,7 @@ public class TlMcpServe {
 		cmd.add("dependency:sources");
 		cmd.addAll(extra);
 		try {
-			Process process = new ProcessBuilder(cmd)
+			Process process = maven(cmd)
 				.redirectInput(nullFile())
 				.redirectErrorStream(true)
 				.start();
@@ -219,10 +227,36 @@ public class TlMcpServe {
 		return null;
 	}
 
-	/** mvn -s settings -q; on Windows Maven's launcher is mvn.cmd. */
+	/**
+	 * Maven runs on this launcher's own JDK (at least {@link #MIN_JAVA}): the
+	 * server needs Java 17, while JAVA_HOME or a mavenrc file (mavenrc_pre.bat,
+	 * ~/.mavenrc - often used to pin an older JDK for the user's builds) may
+	 * point elsewhere. MAVEN_SKIP_RC keeps the mavenrc files from overriding
+	 * JAVA_HOME again.
+	 */
+	private static ProcessBuilder maven(List<String> cmd) {
+		ProcessBuilder builder = new ProcessBuilder(cmd);
+		builder.environment().put("JAVA_HOME", System.getProperty("java.home"));
+		builder.environment().put("MAVEN_SKIP_RC", "1");
+		return builder;
+	}
+
+	/**
+	 * mvn -s settings -q; on Windows Maven's launcher is mvn.cmd, run via
+	 * {@code cmd.exe /q /c}: with echo off from the start, a command placed
+	 * before {@code @echo off} in a customized mvn.cmd (or in mavenrc_pre.bat)
+	 * is not echoed to stdout, which is the server's JSON-RPC channel.
+	 */
 	private static List<String> mvn(String settings) {
 		List<String> cmd = new ArrayList<>();
-		cmd.add(WINDOWS ? "mvn.cmd" : "mvn");
+		if (WINDOWS) {
+			cmd.add("cmd.exe");
+			cmd.add("/q");
+			cmd.add("/c");
+			cmd.add("mvn.cmd");
+		} else {
+			cmd.add("mvn");
+		}
 		cmd.add("-s");
 		cmd.add(settings);
 		cmd.add("-q");
