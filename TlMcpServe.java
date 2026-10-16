@@ -4,10 +4,14 @@
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-BOS-TopLogic-1.0
  */
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -101,10 +105,16 @@ public class TlMcpServe {
 		List<String> serve = mvn(settings);
 		serve.add(coord + ":serve");
 		serve.addAll(extra);
+		warnIfMvnCmdPinsJavaHome();
 		Process server = maven(serve)
-			.redirectOutput(ProcessBuilder.Redirect.INHERIT)
 			.redirectError(ProcessBuilder.Redirect.INHERIT)
 			.start();
+		// Only JSON-RPC messages go to the client; anything else Maven prints on
+		// stdout (its own errors, e.g. a JDK too old for the server, or a
+		// command echoed by a customized mvn.cmd) goes to stderr, where it shows
+		// up in the client's log instead of breaking the connection silently.
+		Thread output = new Thread(() -> filterJsonLines(server.getInputStream()), "server-output");
+		output.start();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			destroyTree(server.toHandle());
@@ -121,6 +131,7 @@ public class TlMcpServe {
 		forward.start();
 
 		int exitCode = server.waitFor();
+		output.join(5000);
 		destroyTree(prefetch == null ? null : prefetch.toHandle());
 		System.exit(exitCode);
 	}
@@ -265,6 +276,79 @@ public class TlMcpServe {
 
 	private static ProcessBuilder.Redirect nullFile() {
 		return ProcessBuilder.Redirect.from(new File(WINDOWS ? "NUL" : "/dev/null"));
+	}
+
+	/**
+	 * Copies the server's stdout line by line: JSON-RPC messages (one per line,
+	 * starting with '{', or "[{" for a batch) to stdout, everything else to
+	 * stderr.
+	 */
+	private static void filterJsonLines(InputStream in) {
+		ByteArrayOutputStream line = new ByteArrayOutputStream();
+		try {
+			for (int b; (b = in.read()) >= 0;) {
+				line.write(b);
+				if (b == '\n') {
+					writeLine(line);
+				}
+			}
+			writeLine(line);
+		} catch (IOException ex) {
+			// The server is gone; main handles the shutdown.
+		}
+	}
+
+	private static void writeLine(ByteArrayOutputStream line) {
+		if (line.size() == 0) {
+			return;
+		}
+		byte[] bytes = line.toByteArray();
+		line.reset();
+		int i = skipBlanks(bytes, 0);
+		// '[' only as a JSON-RPC batch ("[{"), not Maven's "[ERROR]"/"[INFO]".
+		boolean json = i < bytes.length && (bytes[i] == '{'
+			|| bytes[i] == '[' && skipBlanks(bytes, i + 1) < bytes.length && bytes[skipBlanks(bytes, i + 1)] == '{');
+		PrintStream target = json ? System.out : System.err;
+		target.write(bytes, 0, bytes.length);
+		target.flush();
+	}
+
+	private static int skipBlanks(byte[] bytes, int i) {
+		while (i < bytes.length && (bytes[i] == ' ' || bytes[i] == '\t')) {
+			i++;
+		}
+		return i;
+	}
+
+	/**
+	 * A mvn.cmd edited to set JAVA_HOME itself (e.g. to an older JDK for the
+	 * user's builds) overrides the JDK this launcher hands to Maven; the server
+	 * then fails to load. Say so on stderr - the fix belongs in mavenrc_pre.bat,
+	 * which MAVEN_SKIP_RC keeps out of this launcher's Maven runs.
+	 */
+	private static void warnIfMvnCmdPinsJavaHome() {
+		if (!WINDOWS) {
+			return;
+		}
+		String path = System.getenv().getOrDefault("PATH", "");
+		for (String dir : path.split(File.pathSeparator)) {
+			File mvnCmd = new File(dir.replace("\"", ""), "mvn.cmd");
+			if (!mvnCmd.isFile()) {
+				continue;
+			}
+			try {
+				for (String l : Files.readAllLines(mvnCmd.toPath(), StandardCharsets.ISO_8859_1)) {
+					if (l.matches("(?i)\\s*@?set\\s+\"?JAVA_HOME=.*")) {
+						System.err.println("tl-mcp: warning: " + mvnCmd + " sets JAVA_HOME itself (" + l.trim()
+							+ "). The server needs Java " + MIN_JAVA + "; move that line to %USERPROFILE%\\mavenrc_pre.bat.");
+						break;
+					}
+				}
+			} catch (IOException ex) {
+				// Unreadable: nothing to warn about.
+			}
+			return;
+		}
 	}
 
 	private static void copy(InputStream in, OutputStream out) {
