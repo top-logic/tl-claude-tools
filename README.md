@@ -19,7 +19,7 @@ If adding the marketplace fails because GitHub is cloned via SSH (no SSH key or 
 /plugin marketplace add https://github.com/top-logic/tl-claude-tools.git
 ```
 
-**Requirements:** a JDK (11 or newer) and Maven, both on `PATH` — for `tl-mcp`, `tl-app` and `run-scripted-test`. Works on Linux, macOS and Windows; on Windows the skill scripts run in the Git Bash that Claude Code uses (`winget install Microsoft.OpenJDK.17`, Maven from <https://maven.apache.org/download.cgi>).
+**Requirements:** a JDK 17 or newer and Maven, both on `PATH` — for `tl-mcp`, `tl-app` and `run-scripted-test`. Works on Linux, macOS and Windows; on Windows the skill scripts run in the Git Bash that Claude Code uses (`winget install Microsoft.OpenJDK.17`, Maven from <https://maven.apache.org/download.cgi>).
 
 To track the rolling main branch (default), no further pinning is needed. For a stable pin:
 
