@@ -16,6 +16,17 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
 /**
  * Launcher for the tl-mcp MCP server, invoked from the plugin's .mcp.json as a
  * single-file source program ({@code java TlMcpServe.java ...}, JDK 11+).
@@ -90,7 +101,7 @@ public class TlMcpServe {
 				+ Runtime.version() + " (" + System.getProperty("java.home") + ").");
 			System.exit(1);
 		}
-		String settings = args[0];
+		String settings = withUserSettings(args[0]);
 		String coord = System.getenv().getOrDefault("TL_MCP_COORD", DEFAULT_COORD);
 		List<String> extra = new ArrayList<>(List.of(args).subList(1, args.length));
 		File pom = findPom();
@@ -196,6 +207,62 @@ public class TlMcpServe {
 		for (ProcessHandle target : targets) {
 			destroyTree(target);
 		}
+	}
+
+	/**
+	 * {@code mvn -s} replaces the user's ~/.m2/settings.xml, and with it the
+	 * repositories, mirrors, server credentials and local repository a project
+	 * may need (e.g. artifacts only available from a customer's repository). So
+	 * when that file exists, the plugin's profiles and active profiles are added
+	 * to a copy of it, which is passed instead. The global settings of the Maven
+	 * installation stay in effect either way. If the user's file cannot be read,
+	 * the plugin's settings are used alone, as before.
+	 */
+	static String withUserSettings(String pluginSettings) {
+		File user = new File(System.getProperty("user.home"), ".m2" + File.separator + "settings.xml");
+		if (!user.isFile()) {
+			return pluginSettings;
+		}
+		try {
+			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			factory.setExpandEntityReferences(false);
+			DocumentBuilder builder = factory.newDocumentBuilder();
+			Document doc = builder.parse(user);
+			Document plugin = builder.parse(new File(pluginSettings));
+			Element root = doc.getDocumentElement();
+			Element profiles = child(doc, root, "profiles");
+			Element active = child(doc, root, "activeProfiles");
+			NodeList add = plugin.getElementsByTagName("profile");
+			for (int i = 0; i < add.getLength(); i++) {
+				profiles.appendChild(doc.importNode(add.item(i), true));
+			}
+			NodeList ids = plugin.getElementsByTagName("activeProfile");
+			for (int i = 0; i < ids.getLength(); i++) {
+				active.appendChild(doc.importNode(ids.item(i), true));
+			}
+			File merged = File.createTempFile("tl-mcp-settings-", ".xml");
+			merged.deleteOnExit();
+			TransformerFactory.newInstance().newTransformer()
+				.transform(new DOMSource(doc), new StreamResult(merged));
+			System.err.println("tl-mcp: using " + user + " plus the TopLogic Nexus profile");
+			return merged.getAbsolutePath();
+		} catch (Exception ex) {
+			System.err.println("tl-mcp: warning: cannot read " + user + " (" + ex.getMessage()
+				+ "); using only the plugin's Maven settings");
+			return pluginSettings;
+		}
+	}
+
+	/** The direct child element of root with the given name, created if missing. */
+	private static Element child(Document doc, Element root, String name) {
+		for (Node n = root.getFirstChild(); n != null; n = n.getNextSibling()) {
+			if (n instanceof Element && name.equals(((Element) n).getTagName())) {
+				return (Element) n;
+			}
+		}
+		Element created = doc.createElement(name);
+		root.appendChild(created);
+		return created;
 	}
 
 	/**

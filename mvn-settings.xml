@@ -5,7 +5,9 @@
 	mcpServers entry so that the tl-mcp-server plugin resolves AND the served
 	project's TopLogic parent POM and dependencies resolve, without requiring
 	the user to modify their personal ~/.m2/settings.xml. Central remains the
-	implicit default for everything else.
+	implicit default for everything else. If ~/.m2/settings.xml exists, the
+	launcher adds the profile below to a copy of it and passes that instead,
+	so the user's own repositories, mirrors and credentials stay in effect.
 
 	The <repositories> block is essential: the tl-mcp-server 'serve' goal reads
 	the reactor project in the working directory, which requires resolving its
