@@ -340,7 +340,7 @@ To generate Java interfaces / impl classes from the model, add `package-binding`
 </plugin>
 ```
 
-Each class produces three files: `XxxBase.java` (interface with default methods for accessors), `Xxx.java` (user-editable subinterface), `XxxImpl.java` (user-editable impl). The factory class `ModuleFactory.java` is generated alongside. Check the files into source control.
+Each class produces three files: `XxxBase.java` (interface with default methods for accessors), `Xxx.java` (the interface template: created once, never overwritten, the place for your own `default` methods), `XxxImpl.java` (generated implementation class, overwritten on every run — never edit it; a project-specific copyright header is set via the `copyrightHeader` / `copyrightHolder` parameters of the `generate-java` goal). The factory class `ModuleFactory.java` is generated alongside. Check the files into source control.
 
 ## Build-cycle gotchas
 
