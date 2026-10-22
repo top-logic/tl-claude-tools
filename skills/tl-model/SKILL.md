@@ -275,37 +275,37 @@ Files live in `src/main/webapp/WEB-INF/conf/resources/model.<module>.messages_en
 
 ### Properties-file encoding
 
-TopLogic follows the **Java Properties standard**: `*.properties` files are encoded in **ISO-8859-1** (Latin-1). Umlauts and other Latin-1 characters are stored as their native single-byte ISO-8859-1 representation — `Ä` is the byte `0xC4`, not the UTF-8 sequence `0xC3 0x84`. Writing the file in UTF-8 triggers the build warning `Resource check: Not normalized` and risks mojibake when read.
+The encoding depends on the TopLogic version:
 
-```properties
-# Correct — Latin-1 encoded, umlauts stored as single Latin-1 bytes
-model.finanzen.TransactionKind.Opening = Eröffnung
-```
+- **TopLogic 8.0 and later:** bundles under `WEB-INF/conf/resources/` are plain **UTF-8** with literal umlauts (`Eröffnung`). The build's resource normalization reads and writes UTF-8, so edit the files directly with the normal file tools. A Latin-1 file gets `U+FFFD` replacement characters on the next build; check with `grep -c $'\xef\xbf\xbd' <file>` (must be `0`).
+- **TopLogic 7.x:** bundles follow the Java Properties standard and are **ISO-8859-1** (Latin-1): `Ä` is the single byte `0xC4`. The file tools read and write UTF-8, so editing such a file directly corrupts it. Edit a UTF-8 working copy and convert back:
 
-**Working with these files from Claude / tooling that defaults to UTF-8:** the file/edit tools read and write UTF-8, so directly editing an ISO-8859-1 file corrupts it. Use a UTF-8 working copy and convert with `iconv`:
+  ```bash
+  iconv -f ISO-8859-1 -t UTF-8 messages_de.properties > messages_de.utf8.properties
+  # edit messages_de.utf8.properties
+  iconv -f UTF-8 -t ISO-8859-1 messages_de.utf8.properties > messages_de.properties
+  rm messages_de.utf8.properties
+  ```
 
-1. Convert to UTF-8 for editing:
-   ```bash
-   iconv -f ISO-8859-1 -t UTF-8 messages_de.properties > messages_de.utf8.properties
-   ```
+  `iconv` fails on characters outside Latin-1 (`—`, `„`, `…`); use ASCII substitutes or `\uXXXX` escapes.
 
-2. Edit the UTF-8 working copy with normal tools.
-
-3. Convert back to ISO-8859-1 and replace the original:
-   ```bash
-   iconv -f UTF-8 -t ISO-8859-1 messages_de.utf8.properties > messages_de.properties
-   rm messages_de.utf8.properties
-   ```
-
-`iconv` errors out on characters that don't exist in ISO-8859-1 (e.g. `—`, `„`, `"`, `…`) — use plain ASCII substitutes (`--`, `"`, `"`, `...`) in the source, or escape them as `\uXXXX` if you really need them.
+The version is the `tl.version` / parent version in the application's `pom.xml`.
 
 ### Normalizing resource files
 
-After editing a bundle under `WEB-INF/conf/resources/`, normalize it — otherwise the build's `Resource check: Not normalized` warning fails conformance:
+After editing a bundle under `WEB-INF/conf/resources/`, normalize it — otherwise the build's `Resource check: Not normalized` warning fails conformance. Normalize a single file:
 
 ```bash
-mvn -N tl:normalize-resource-file -Dresource=<path-to-.properties>
+mvn -B -N tl:normalize-resource-file -DresourcePath=<absolute path to the .properties file>
 ```
+
+or all bundles of a module's resource directory:
+
+```bash
+mvn -B -N tl:normalize-resource-file -DbaseDir=<absolute module path>
+```
+
+`resourcePath` names a file or a directory (every `*.properties` in it is normalized); a relative path is resolved against `baseDir`, which defaults to the directory Maven runs in, and `resourcePath` defaults to `src/main/webapp/WEB-INF/conf/resources`. Any other property name (e.g. `-Dresource=`) is ignored silently: the goal then looks at the default directory of the current directory, logs `No resources: …` and still reports `BUILD SUCCESS`. A changed file is logged as `Normalized: <file>`; no log line means the file was already normalized.
 
 The `-N` (non-recursive) flag is essential: without it Maven resolves the full reactor (including GWT modules) and the command fails.
 
