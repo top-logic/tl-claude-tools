@@ -24,7 +24,9 @@ url: http://localhost:PORT/context-path/
 log: <app-module-path>/tmp/tl-app.log
 ```
 
-Report the URL and credentials (user `root`, password `root1234`) to the user.
+Report the URL and credentials (user `root`, password `root1234`) to the user. If the script also prints a `login:` line, that is the login instead.
+
+**Environment-controlled application.** Where the environment runs the application itself - e.g. a workspace of the TopLogic control application, in which the application is the main process of the container - it names a control command in `TL_APP_CONTROL`. The script then hands `start` / `stop` / `restart` to that command instead of starting a Maven process of its own, so there is never a second instance holding the database. The output has the same form. Use `restart` after a build to get the changes into the running application.
 
 ## Building before start
 

@@ -8,6 +8,8 @@
 # On start success, prints to stdout:
 #   url: http://localhost:PORT/context-path/
 #   log: <app-module-path>/tmp/tl-app.log
+# and, when the environment controls the application (TL_APP_CONTROL), optionally
+#   login: <user> / <password>
 # On failure, prints diagnostics to stderr and exits 1.
 #
 # The port is recorded in <app-module-path>/tmp/app-port.txt to prevent
@@ -26,6 +28,14 @@ fi
 
 COMMAND="$1"
 APP_MODULE="$2"
+
+# An environment that runs the application itself (e.g. a workspace container whose main
+# process is the application) names its control command in TL_APP_CONTROL. The command takes
+# the same sub-command and module path, prints the same "url:" / "log:" lines (optionally a
+# "login:" line) and exits non-zero on failure. No second instance is started then.
+if [[ -n "${TL_APP_CONTROL:-}" ]]; then
+    exec "$TL_APP_CONTROL" "$COMMAND" "$APP_MODULE"
+fi
 
 # Validate the module path.
 if [[ ! -f "$APP_MODULE/pom.xml" ]]; then
