@@ -72,6 +72,8 @@ import org.w3c.dom.NodeList;
  * Nexus) is passed by .mcp.json via ${CLAUDE_PLUGIN_ROOT}. When the working
  * directory has no pom.xml (e.g. a Git root with the Maven project one level
  * down), the launcher searches for one and passes it to Maven with {@code -f}.
+ * The environment variable TL_MCP_PROJECT (a directory or a pom.xml) serves
+ * another project instead of the working directory's.
  * </p>
  */
 public class TlMcpServe {
@@ -104,7 +106,7 @@ public class TlMcpServe {
 		String settings = withUserSettings(args[0]);
 		String coord = System.getenv().getOrDefault("TL_MCP_COORD", DEFAULT_COORD);
 		List<String> extra = new ArrayList<>(List.of(args).subList(1, args.length));
-		File pom = findPom();
+		File pom = projectPom();
 		if (pom != null) {
 			System.err.println("tl-mcp: using " + pom.getAbsolutePath());
 			extra.add("-f");
@@ -266,16 +268,45 @@ public class TlMcpServe {
 	}
 
 	/**
-	 * Finds the project pom.xml when the working directory does not contain one.
-	 * Search order: cwd, the child directory named like cwd, the only child
-	 * directory with a pom, parent directories. Returns {@code null} if the pom is
-	 * in cwd or none is found (Maven's own error is clear enough). The
-	 * tl-docs-index hook locates the project the same way.
+	 * The pom.xml to pass with {@code -f}, or {@code null} to use the one in the
+	 * working directory.
+	 *
+	 * <p>
+	 * TL_MCP_PROJECT (a directory or a pom.xml) selects another project than the
+	 * session directory, e.g. the customer application a module is developed
+	 * against, while the session runs on the module, which cannot be built or
+	 * run on its own. A directory is searched like the working directory below.
+	 * If it has no pom, the launcher fails instead of serving the wrong project.
+	 * </p>
 	 */
-	private static File findPom() {
-		File cwd = new File(".").getAbsoluteFile().getParentFile();
+	private static File projectPom() {
+		String project = System.getenv("TL_MCP_PROJECT");
+		if (project == null || project.isBlank()) {
+			File cwd = new File(".").getAbsoluteFile().getParentFile();
+			if (new File(cwd, "pom.xml").isFile()) {
+				return null; // already in the right directory
+			}
+			return findPom(cwd);
+		}
+		File given = new File(project).getAbsoluteFile();
+		File pom = given.isFile() ? given : given.isDirectory() ? findPom(given) : null;
+		if (pom == null) {
+			System.err.println("tl-mcp: TL_MCP_PROJECT=" + project + " is no Maven project (no pom.xml found).");
+			System.exit(1);
+		}
+		return pom;
+	}
+
+	/**
+	 * Finds the project pom.xml for a directory. Search order: the directory
+	 * itself, the child directory named like it, the only child directory with a
+	 * pom, parent directories. Returns {@code null} if none is found (Maven's own
+	 * error is clear enough). The tl-docs-index hook locates the project the same
+	 * way.
+	 */
+	private static File findPom(File cwd) {
 		if (new File(cwd, "pom.xml").isFile()) {
-			return null; // already in the right directory
+			return new File(cwd, "pom.xml");
 		}
 		File named = new File(new File(cwd, cwd.getName()), "pom.xml");
 		if (named.isFile()) {

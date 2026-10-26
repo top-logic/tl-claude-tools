@@ -48,6 +48,8 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 
   **Source for external dependencies.** Alongside the server, the launcher runs `mvn dependency:sources` in the background (best-effort, output on stderr) so `show_source` can serve source for external dependencies and not just reactor modules. It runs concurrently rather than in front of the server because the reactor-wide pass alone takes most of the MCP client's 30 s connect window. Artifacts without published sources are skipped, and the server still starts offline.
 
+  **Serving another project.** By default the server indexes the project of the session directory. Set `TL_MCP_PROJECT` to a directory (searched like the session directory) or a `pom.xml` to serve another one — e.g. when the session runs on a module that cannot be built on its own and the customer application it is developed against is the reactor to index. If that path has no pom, the server fails to start instead of serving the wrong project. The `tl-docs-index` hook follows the same variable.
+
   Outside a Maven project the server fails fast; disable it via `/mcp` if you don't need it.
 
   **Developer articles.** The `list_docs` / `read_doc` tools serve the Markdown articles the modules of the workspace ship below `META-INF/tl-docs/` in their jars (folders are chapters; `doc:<name>#<section>` links between articles can be passed to `read_doc` as they stand), so an application workspace finds the engine's developer documentation for exactly the engine version it builds against.

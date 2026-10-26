@@ -19,6 +19,8 @@
 # into the target/ of the project it serves): the session directory, else a
 # child directory with a pom.xml (the one named like the session directory, or
 # the only one), else the nearest parent directory with a pom.xml.
+# TL_MCP_PROJECT (a directory or a pom.xml) replaces the session directory, as
+# for the launcher.
 set -u
 
 find_project() {
@@ -50,7 +52,9 @@ find_project() {
 	done
 }
 
-DIR="$(find_project "${CLAUDE_PROJECT_DIR:-$PWD}")"
+START="${TL_MCP_PROJECT:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+[ -f "$START" ] && START="$(dirname "$START")"
+DIR="$(find_project "$START")"
 [ -n "$DIR" ] || exit 0
 INDEX="$DIR/target/tl-docs-index.md"
 
