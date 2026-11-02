@@ -117,6 +117,31 @@ TL Script is TopLogic's embedded expression language. It is used for search expr
   - Part literal → `TLTypePart` (via `TLModelUtil.findPart`) — the generic part type, not only `TLStructuredTypePart`
   - Singleton literal → the singleton instance object (runtime-typed `Object`, concrete class depends on the model)
 
+## Reflective model access
+
+The model is made of objects of the module `tl.model`, so a script can read it like any other data and act on attributes it does not name. Use this instead of hard-coding a list of attributes that silently goes stale when the model changes.
+
+- `$o.type()` → the `TLClass` of an object; `` $c.get(`tl.model:TLClass#generalizations`) `` → its direct supertypes.
+- `` $c.get(`tl.model:TLStructuredType#localParts`) `` → the attributes the type itself declares (inherited ones live on the supertypes, so walk `generalizations` to get all).
+- On a part: `tl.model:TLStructuredTypePart#name`, `tl.model:TLReference#composite` / `#aggregate`, `tl.model:TLStructuredTypePart#multiple`, …; distinguish references from properties with `` $p.instanceOf(`tl.model:TLReference`) ``.
+- `$obj.get($partExpr)` reads an attribute given by a computed part (not only a backtick literal).
+- Upwards: `$x.container()` / `$x.containerReference()` give the owner of a part and the composite reference holding it.
+
+**Example — all composition descendants of an object** (every part reached through composite references, transitively, including references inherited from supertypes):
+
+```
+root -> $root.recursion(o ->
+    $o.type()
+      .recursion(c -> $c.get(`tl.model:TLClass#generalizations`))
+      .flatMap(c -> $c.get(`tl.model:TLStructuredType#localParts`))
+      .filter(p -> $p.instanceOf(`tl.model:TLReference`)
+                && $p.get(`tl.model:TLReference#composite`))
+      .flatMap(r -> $o.get($r)),
+  1)
+```
+
+`recursion(fun, 1)` leaves out the root itself and stops on results already seen; the result is a set, so a reference overridden in a subclass (listed once per declaring type) yields no duplicates. Narrow to a type with `` .filter(x -> $x.instanceOf(`my.module:MyType`)) ``. In a secured evaluation `get` returns only objects the current user may see.
+
 ## How to look up a function
 
 Script functions come from two registration mechanisms. Both can live in **any module** that depends on `com.top_logic.model.search`, not only in `com.top_logic.model.search` itself.

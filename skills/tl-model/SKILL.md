@@ -95,7 +95,7 @@ For human-readable prose that should be translatable, prefer the internationaliz
 
 Reference attributes:
 - `multiple="true"` — collection. Without `ordered="true"`, set semantics. With it, list.
-- `composite="true"` — *owning* relationship: the target is deleted when the source is deleted, and the target lives inside the source for serialization purposes. Always pair with `kind="forwards"`.
+- `composite="true"` — *owning* relationship: the target is deleted when the source is deleted, and the target lives inside the source for serialization purposes. Always pair with `kind="forwards"`. To collect all composition descendants of an object in TL-Script without naming each composite reference, read the model reflectively (see the `tl-script` skill, "Reflective model access").
 - `kind="forwards"` / `kind="backwards"` — the direction the link is materialized.
 - `inverse-reference="..."` — declares this side as the inverse of another reference for bidirectional navigation.
 - `mandatory="true"` — at least one value required.
