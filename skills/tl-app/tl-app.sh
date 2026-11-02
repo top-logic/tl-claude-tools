@@ -162,6 +162,7 @@ do_start() {
 
     local timeout=120 interval=1 elapsed=0 app_url=""
     local server_started_at=""
+    local up_at="" url_grace=5
 
     while (( elapsed < timeout )); do
         # Check for BUILD FAILURE first (before process liveness, to avoid race).
@@ -189,9 +190,19 @@ do_start() {
             fi
         fi
 
-        # Check for the fully-ready signal.
+        # Check for the fully-ready signal. The application may log it before Jetty logs the
+        # "Server started:" line with the context path, so give that line a few seconds to
+        # follow before falling back to the root URL.
         if grep -q "up and running" "$log" 2>/dev/null; then
             if [[ -z "$app_url" ]]; then
+                if [[ -z "$up_at" ]]; then
+                    up_at="$elapsed"
+                fi
+                if (( elapsed - up_at < url_grace )); then
+                    sleep "$interval"
+                    (( elapsed += interval ))
+                    continue
+                fi
                 app_url="http://localhost:${port}/"
             fi
             echo "url: $app_url"
