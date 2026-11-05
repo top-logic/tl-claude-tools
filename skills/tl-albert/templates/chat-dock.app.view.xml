@@ -5,8 +5,10 @@
 	overlay has an <app-shell> already, add the <footer> to it.
 
 	chat-id: write it twice (on <chat-dock> and on the <chat> inside); the two must agree. With the
-	chat-id of the Albert page ("albert") the dock shows the same conversation and hides itself
-	while the Albert page is on screen. Without an Albert page, keep "albert" too.
+	chat-id of the Albert page ("albert", templates/albert.view.xml) the dock shows the same
+	conversation and hides itself while the Albert page is on screen. Without an Albert page, keep
+	"albert" too. With the page that the engine ships (detect: engine.chatView yes), which writes
+	no chat-id: remove both chat-id attributes, so that the dock shares that conversation.
 
 	The dock has no access control of its own. An account without an Albert role sees the button,
 	and the chat answers that no agent is available.

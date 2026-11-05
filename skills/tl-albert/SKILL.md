@@ -46,7 +46,7 @@ Use one `AskUserQuestion` call. Fill the options from the fact sheet (`roles.onR
 
 1. **Roles that talk to Albert** (multi-select): the roles of `roles.onRoot`. An account without one of these roles gets no Albert.
 2. **Roles that may let Albert change data** (multi-select): a subset of question 1. Recommend only roles that have `Write` grants in `<security-config>`. Albert asks the account before each change. The model security checks each change again.
-3. **Provider and key**: a shipped provider (`anthropic`, `openai`, `mistral`, `xai`, secret `tl_<provider>_api_key`), or an own endpoint or gateway (`templates/LLMProviderService.config.xml`). Tell the user: the data that Albert reads goes to the provider. The customer must approve this data flow before production use.
+3. **Provider, model and key**: a shipped provider (`anthropic`, `openai`, `mistral`, `xai`, secret `tl_<provider>_api_key`), or an own endpoint or gateway (`templates/LLMProviderService.config.xml`). Ask for the model too. If the model is not in the default list of the provider (`references/integration.md`, step 2), set `tl_<provider>_models` to a list that contains it, together with `tl_ai_default_model`. Else the start fails: "no provider exposes model". Tell the user: the data that Albert reads goes to the provider. The customer must approve this data flow before production use.
 4. **Where Albert appears**: React: own page (recommended), a dock on every page, or both. Classic: a tab (no choice, skip the question).
 
 Do not ask more. Use the defaults of `references/integration.md` for all other decisions, and list them in the result.
@@ -78,7 +78,7 @@ An administrator bypasses the tool policy and the model security. A test as `roo
 3. Read the log. Expect 0 lines with `ERROR` and one line `Agent tool access: roles=<n> ... backgroundAllowlist=<n>`. Read the `SecurityCoverageCheck` findings for the app types.
 4. As `root`, make one test account for each decided role and one account without an Albert role. Use the procedure of `references/integration.md`, section "Test accounts".
 5. For each test account, do these checks:
-   - `/chat/capabilities` lists `TL_SingleAgent` for an Albert role, and no agent for the account without an Albert role. The request needs the window of an open page: `GET <app-url>/chat/capabilities?windowId=<window name>`. The window name is the parameter `windowName` of the requests `/react-api/poll` of that page. Without it the answer is 409 `stale_window`.
+   - Agents of the account. If `detect` shows `engine.chatRestApi: yes`: `/chat/capabilities` lists `TL_SingleAgent` for an Albert role, and no agent for the account without an Albert role. The request needs the window of an open page: `GET <app-url>/chat/capabilities?windowId=<window name>`. The window name is the parameter `windowName` of the requests `/react-api/poll` of that page. Without it the answer is 409 `stale_window`. If `engine.chatRestApi` is `no`, the engine has no `/chat/*` routes (Trac #30126). Then check the agents through the UI only: the items below.
    - The Albert page (or dock, or tab) opens. A question about the data gets an answer. Ask for a table: the table opens in the rail of the page.
    - The chat list shows only the chats of this account.
    - Read-only role: tell Albert to change an object. Albert refuses. The object stays unchanged.

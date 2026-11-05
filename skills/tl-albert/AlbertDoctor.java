@@ -78,6 +78,9 @@ public class AlbertDoctor {
 	/** Chat page shipped by tl-chat, relative to WEB-INF/views/. */
 	static final String ENGINE_CHAT_VIEW = "tl-chat/albert.view.xml";
 
+	/** The tl-chat jar maps the chat REST routes (/chat/*, e.g. /chat/capabilities) in this file. Gone since Trac #30126. */
+	static final String ENGINE_CHAT_REST_FRAGMENT = "META-INF/web-fragment.xml";
+
 	/** How-to article shipped in the tl-ai-core jar (read_doc name). */
 	static final String ENGINE_HOWTO_DOC = "ai/adding-albert";
 
@@ -214,6 +217,8 @@ public class AlbertDoctor {
 
 		Boolean howtoDoc;
 
+		Boolean chatRestApi;
+
 		boolean scanned;
 
 		int fragments;
@@ -238,6 +243,8 @@ public class AlbertDoctor {
 			chatSecurity = hasEntry(coreWar, ENGINE_CHAT_SECURITY);
 			chatView = hasEntry(chatWar, "WEB-INF/views/" + ENGINE_CHAT_VIEW);
 			howtoDoc = hasEntry(coreJar, "META-INF/tl-docs/" + ENGINE_HOWTO_DOC + ".md");
+			chatRestApi = entryContains(group.resolve("tl-chat").resolve(version).resolve("tl-chat-" + version + ".jar"),
+				ENGINE_CHAT_REST_FRAGMENT, "/chat/*");
 			if (!Files.isDirectory(group)) {
 				return;
 			}
@@ -289,6 +296,18 @@ public class AlbertDoctor {
 				}
 			} catch (IOException ex) {
 				// Skip an unreadable archive.
+			}
+		}
+
+		static Boolean entryContains(Path archive, String entry, String text) {
+			if (!Files.isRegularFile(archive)) {
+				return null;
+			}
+			try (ZipFile zip = new ZipFile(archive.toFile())) {
+				ZipEntry e = zip.getEntry(entry);
+				return e != null && new String(readAll(zip.getInputStream(e)), StandardCharsets.UTF_8).contains(text);
+			} catch (IOException ex) {
+				return null;
 			}
 		}
 
@@ -950,6 +969,7 @@ public class AlbertDoctor {
 			println("engine.chatSecurity (" + ENGINE_CHAT_SECURITY + "): " + yn(engine.chatSecurity));
 			println("engine.chatView (views/" + ENGINE_CHAT_VIEW + "): " + yn(engine.chatView));
 			println("engine.howtoDoc (doc:" + ENGINE_HOWTO_DOC + "): " + yn(engine.howtoDoc));
+			println("engine.chatRestApi (/chat/capabilities): " + yn(engine.chatRestApi));
 			println("engine.fragmentsScanned: " + engine.fragments);
 			println("");
 			println("## Security");

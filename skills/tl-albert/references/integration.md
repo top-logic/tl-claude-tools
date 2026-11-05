@@ -56,6 +56,13 @@ Add the AI modules to `pom.xml`. Do not write a version.
 
 - The secret store reads the environment variable or system property with the name of the secret. The value is the plain key, without the prefix `unencrypted:`.
 - `tl_ai_default_model` sets the model of the agents. Without it, Albert uses the first model of the first provider with a key.
+- A provider offers only the models of its list. Default lists in 8.0.0-alpha12: `anthropic` `claude-sonnet-4-6,claude-opus-4-7,claude-haiku-4-5`, `openai` `gpt-5.5,gpt-5.4-mini`, `mistral` `mistral-medium-latest,mistral-small-latest`, `xai` `grok-4.3,grok-4-1-fast`. Read `doc:ai/index` for the lists of the app's engine. For another model, set `tl_<provider>_models` (comma-separated) so that it contains the model of `tl_ai_default_model`. Else the start fails with "no provider exposes model".
+
+  ```bash
+  export tl_openai_api_key="..."            # never in the repository
+  export tl_openai_models="gpt-5.6-luna"
+  export tl_ai_default_model="gpt-5.6-luna"
+  ```
 - Local development: the key can also be in the file `~/.top-logic/secrets/<secret name>`. This needs the line `devel-secrets.xml` after `devel-h2.xml` in `deploy/local/webapp/WEB-INF/conf/metaConf.txt`. The archetype writes this line.
 - Own provider (other endpoint, gateway, Amazon Bedrock): `templates/LLMProviderService.config.xml`. Give the key as `<api-key name="..."/>`, not as an alias. Read `doc:ai/providers` for the provider classes and their attributes.
 - A model that models.dev does not know needs an entry in `<model-catalog><model-overrides>` of `LLMProviderService`.
@@ -63,7 +70,7 @@ Add the AI modules to `pom.xml`. Do not write a version.
 
 ## 3A. [React] Albert page
 
-If the engine ships a chat page (`engine.chatView: yes`), the app adds only the navigation entry with `<view-ref view="<chatView>"/>`. Else copy `templates/albert.view.xml` to `views/<app>/albert.view.xml`.
+If the engine ships a chat page (`engine.chatView: yes`), the app adds only the navigation entry with `<view-ref view="<chatView>"/>`. The shipped page writes no `chat-id`. A dock for the same conversation then also has no `chat-id`. Else copy `templates/albert.view.xml` to `views/<app>/albert.view.xml`.
 
 - Add the navigation entry of `templates/nav-item.app.view.xml` to the overlay `views/app.view.xml`. Merge it into the existing `<sidebar config:ref="sidebar">`. The `id` must be unique in the whole view.
 - Default: show the page only to the Albert roles with `<access-control operation="AlbertChat"/>`. Do all three parts of `templates/albert-operation.config.xml`. Without the registration in `CommandGroupRegistry`, the app does not start.
@@ -111,7 +118,7 @@ Use a new database and non-admin accounts. Step 6 of `SKILL.md` lists the checks
 
 - Log: 0 lines with `ERROR`. One line `Agent tool access: roles=<n> ... backgroundAllowlist=<n> agents=...`.
 - `root` in the React administration (`/view/`): *Administration > System > Secrets* shows the secret of the provider as *Available*. *Administration > AI models* shows the model.
-- `GET <app-url>/chat/capabilities` as a test account lists the agents, models and MCP servers that the account may use.
+- Only where `detect` shows `engine.chatRestApi: yes` (8.0.0-alpha12, not engines after Trac #30126): `GET <app-url>/chat/capabilities?windowId=<window name>` as a test account lists the agents, models and MCP servers that the account may use. Else check the same facts in the UI.
 
 ### Test accounts
 

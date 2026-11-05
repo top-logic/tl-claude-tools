@@ -2,7 +2,9 @@
 
 <!--
 	Own LLM provider: another endpoint, a gateway, Amazon Bedrock. Only when the shipped providers
-	(anthropic, openai, mistral, xai with the secrets tl_<provider>_api_key) do not fit.
+	(anthropic, openai, mistral, xai with the secrets tl_<provider>_api_key) do not fit. For a shipped
+	provider with a model outside its default list, no file is necessary: set tl_<provider>_models so
+	that it contains the model of tl_ai_default_model.
 	Target: WEB-INF/autoconf/com.top_logic.tl.ai.core.provider.LLMProviderService.config.xml
 
 	{{PROVIDER_CLASS}}: e.g.
@@ -12,7 +14,7 @@
 	{{PROVIDER_NAME}}: a name of your own, e.g. "gateway".
 	{{BASE_URL_ALIAS}}: an alias of the app's conf.xml (e.g. %GATEWAY_BASE_URL%), so that each
 	  environment sets its own URL.
-	{{MODELS}}: comma-separated model ids of the endpoint.
+	{{MODELS}}: comma-separated model ids of the endpoint. {{DEFAULT_MODEL}} must be one of them.
 	{{SECRET_NAME}}: the name of the secret with the key (e.g. gateway_api_key). The value comes
 	  from the environment variable of that name or ~/.top-logic/secrets/<name>. Never the key here.
 
