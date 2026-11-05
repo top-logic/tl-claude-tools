@@ -42,12 +42,14 @@ If `legacy.tl-ai` is not `none`, do also the migration of `references/integratio
 
 ## Step 3: Ask - at most 4 questions
 
-Use one `AskUserQuestion` call. Fill the options from the fact sheet (`roles.onRoot`, `ui`, the secrets). Mark the recommended option.
+Use one `AskUserQuestion` call. Write the questions and the options in the language of the user. Fill the options from the fact sheet (`roles.onRoot`, `ui`, the secrets, `llm.*`). Mark the recommended option.
 
 1. **Roles that talk to Albert** (multi-select): the roles of `roles.onRoot`. An account without one of these roles gets no Albert.
 2. **Roles that may let Albert change data** (multi-select): a subset of question 1. Recommend only roles that have `Write` grants in `<security-config>`. Albert asks the account before each change. The model security checks each change again.
 3. **Provider, model and key**: a shipped provider (`anthropic`, `openai`, `mistral`, `xai`, secret `tl_<provider>_api_key`), or an own endpoint or gateway (`templates/LLMProviderService.config.xml`). Ask for the model too. If the model is not in the default list of the provider (`references/integration.md`, step 2), set `tl_<provider>_models` to a list that contains it, together with `tl_ai_default_model`. Else the start fails: "no provider exposes model". Tell the user: the data that Albert reads goes to the provider. The customer must approve this data flow before production use.
 4. **Where Albert appears**: React: own page (recommended), a dock on every page, or both. Classic: a tab (no choice, skip the question).
+
+If `detect` shows `llm.WARN`, tell the user in question 3: the app does not start with this model until `tl_<provider>_models` contains it. Never change the model or the model variables for a test run without the agreement of the user.
 
 Do not ask more. Use the defaults of `references/integration.md` for all other decisions, and list them in the result.
 
@@ -73,12 +75,16 @@ Rules for each change:
 
 An administrator bypasses the tool policy and the model security. A test as `root` proves nothing about the roles.
 
-1. Make sure that the key of the provider is set for the app process (environment variable or secret file). Ask the user if it is not set.
-2. Start the app with the skill `tl-claude-tools:tl-app` on a new database. If the user has data in `tmp/`, ask before you delete it.
+1. Make sure that the key of the provider is set for the app process (environment variable or secret file). Ask the user if it is not set. Run `detect` in the same environment: `llm.WARN` must not appear.
+2. Use a new database. If `tmp/` has data of the user, ask first. Then:
+   1. Stop the app with `tl-app.sh stop` if it runs. Do not touch `tmp/` while the app runs.
+   2. Move the database to `tmp.bak-<date>` next to the module (`<module>/tmp.bak-<date>`), never into a Claude scratchpad. Keep `tmp/app-port.txt` in `tmp/`, so that the app keeps its port.
+   3. Start the app with the skill `tl-claude-tools:tl-app`.
+   Tell the user where the backup is.
 3. Read the log. Expect 0 lines with `ERROR` and one line `Agent tool access: roles=<n> ... backgroundAllowlist=<n>`. Read the `SecurityCoverageCheck` findings for the app types.
 4. As `root`, make one test account for each decided role and one account without an Albert role. Use the procedure of `references/integration.md`, section "Test accounts".
 5. For each test account, do these checks:
-   - Agents of the account. If `detect` shows `engine.chatRestApi: yes`: `/chat/capabilities` lists `TL_SingleAgent` for an Albert role, and no agent for the account without an Albert role. The request needs the window of an open page: `GET <app-url>/chat/capabilities?windowId=<window name>`. The window name is the parameter `windowName` of the requests `/react-api/poll` of that page. Without it the answer is 409 `stale_window`. If `engine.chatRestApi` is `no`, the engine has no `/chat/*` routes (Trac #30126). Then check the agents through the UI only: the items below.
+   - Agents of the account. If `detect` shows `engine.chatRestApi: yes`: `/chat/capabilities` lists `TL_SingleAgent` for an Albert role, and no agent for the account without an Albert role. The request needs the window of an open page: `GET <app-url>/chat/capabilities?windowId=<window name>`. The window name is the parameter `windowName` of the requests `/react-api/poll` of that page. Without it the answer is 409 `stale_window`. Classic UI: open the Albert tab first. Use the window id of the `LayoutServlet` URL (the part before the `-`) and add `&conversation=classic`. If `engine.chatRestApi` is `no`, the engine has no `/chat/*` routes (Trac #30126). Then check the agents through the UI only: the items below.
    - The Albert page (or dock, or tab) opens. A question about the data gets an answer. Ask for a table: the table opens in the rail of the page.
    - The chat list shows only the chats of this account.
    - Read-only role: tell Albert to change an object. Albert refuses. The object stays unchanged.

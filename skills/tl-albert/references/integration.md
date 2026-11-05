@@ -78,7 +78,7 @@ If the engine ships a chat page (`engine.chatView: yes`), the app adds only the 
 
 ## 3B. [Classic] Albert tab
 
-`tl-chat-classic` adds the tab `tl-chat/chat/tabLayout.layout.xml` at the start of the main tab bar (`mainTabbar.layout.xml`) through an overlay. Do not add the tab yourself.
+`tl-chat-classic` adds the tab `tl-chat/chat/tabLayout.layout.xml` to the main tab bar (`mainTabbar.layout.xml`) through an overlay. The Albert tab comes after the tabs of the app. Do not add the tab yourself.
 
 - If the app has its own main tab bar with another name, add `<layout-reference resource="tl-chat/chat/tabLayout.layout.xml"/>` there.
 - Give each Albert role the read right on the tab in `conf/security.xml` (`templates/classic-security.xml`). Without it, a non-admin account does not see the tab. The startup hook `access-configuration` imports `conf/security.xml` again when the file changes. Restart the app.
@@ -130,7 +130,13 @@ Make the accounts as `root`. Do not give a test account administrator rights.
 2. *Administration > Access control > Groups*. Select the group that the `singleton-rule` of the role names (`group-with-name`). Select *Edit*. Add the account to *Members*. Select *Save*.
 3. Do step 2 for each role of the account. Make one more account without a group of an Albert role.
 
-[Classic] Use the account and group administration of the classic UI in the same sequence.
+[Classic] In the classic UI (German labels of 8.0.0-alpha12):
+
+1. *Berechtigungen > Benutzerverwaltung*: *Neuer Benutzer*. Enter the user name. The dialog has no password field.
+2. Select the new account. In the burger menu of the details, select *Passwort ändern*. Set the password.
+3. *Bearbeiten*, field *Gruppen*: select the group of the role. *Speichern*.
+
+End each edit with *Speichern* or *Abbrechen*. Else the object stays locked ("Momentan nicht bearbeitbar"), also after a restart of the app. This applies to an edit that a browser script leaves open too.
 
 Tell the user the names and passwords of the test accounts. Tell the user to delete them before production use.
 

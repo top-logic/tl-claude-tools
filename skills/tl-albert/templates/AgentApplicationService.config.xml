@@ -10,7 +10,9 @@
 	business type: what it is, how the user names it, the important attributes and their units.
 	Only facts that the labels or the user give. Keep it short: every run pays for this text.
 
-	The name "application-context" is the entry that the skill TL_init reads and writes.
+	Keep the name "application-context". It marks the application context: Albert's own skill TL_init
+	(shipped by tl-ai-core, see doc:ai/environment) writes and revises the contributor of this name.
+	Do not copy this comment into the application file.
 -->
 <application config:interface="com.top_logic.basic.config.ApplicationConfig$Config"
 	xmlns:config="http://www.top-logic.com/ns/config/6.0"

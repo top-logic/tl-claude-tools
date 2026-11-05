@@ -81,6 +81,9 @@ public class AlbertDoctor {
 	/** The tl-chat jar maps the chat REST routes (/chat/*, e.g. /chat/capabilities) in this file. Gone since Trac #30126. */
 	static final String ENGINE_CHAT_REST_FRAGMENT = "META-INF/web-fragment.xml";
 
+	/** Web fragment entry of tl-ai-core with the aliases of the provider model lists (%OPENAI_MODELS%, ...). */
+	static final String ENGINE_AI_ALIASES = "WEB-INF/conf/tl-ai-core.conf.xml";
+
 	/** How-to article shipped in the tl-ai-core jar (read_doc name). */
 	static final String ENGINE_HOWTO_DOC = "ai/adding-albert";
 
@@ -231,6 +234,9 @@ public class AlbertDoctor {
 
 		final Set<String> layouts = new TreeSet<>();
 
+		/** Alias entries of tl-ai-core.conf.xml (e.g. %OPENAI_MODELS% -> ${env:tl_openai_models:gpt-5.5,...}). */
+		final Map<String, String> aliases = new LinkedHashMap<>();
+
 		void read(Path repo, String version) {
 			if (version == null) {
 				return;
@@ -243,6 +249,7 @@ public class AlbertDoctor {
 			chatSecurity = hasEntry(coreWar, ENGINE_CHAT_SECURITY);
 			chatView = hasEntry(chatWar, "WEB-INF/views/" + ENGINE_CHAT_VIEW);
 			howtoDoc = hasEntry(coreJar, "META-INF/tl-docs/" + ENGINE_HOWTO_DOC + ".md");
+			readAliases(coreWar);
 			chatRestApi = entryContains(group.resolve("tl-chat").resolve(version).resolve("tl-chat-" + version + ".jar"),
 				ENGINE_CHAT_REST_FRAGMENT, "/chat/*");
 			if (!Files.isDirectory(group)) {
@@ -296,6 +303,26 @@ public class AlbertDoctor {
 				}
 			} catch (IOException ex) {
 				// Skip an unreadable archive.
+			}
+		}
+
+		private void readAliases(Path war) {
+			if (!Files.isRegularFile(war)) {
+				return;
+			}
+			try (ZipFile zip = new ZipFile(war.toFile())) {
+				ZipEntry e = zip.getEntry(ENGINE_AI_ALIASES);
+				if (e == null) {
+					return;
+				}
+				Document doc = Xml.parse(zip.getInputStream(e));
+				if (doc != null) {
+					for (Element entry : Xml.all(doc.getDocumentElement(), "entry")) {
+						aliases.put(entry.getAttribute("name"), entry.getAttribute("value"));
+					}
+				}
+			} catch (IOException ex) {
+				// No aliases: the model check is skipped.
 			}
 		}
 
@@ -408,6 +435,18 @@ public class AlbertDoctor {
 		final Set<String> promptContributors = new TreeSet<>();
 
 		final Set<String> customProviders = new TreeSet<>();
+
+		/** Raw "models" attributes of the app's own providers. */
+		final List<String> customProviderModels = new ArrayList<>();
+
+		/** The app replaces the shipped providers (<providers config:override="true">). */
+		boolean providersOverridden;
+
+		/** default-model of the app's AgentRuntimeService, raw. */
+		String appDefaultModel;
+
+		/** Alias entries of the app's conf.xml files. */
+		final Map<String, String> appAliases = new LinkedHashMap<>();
 
 		final Set<String> namedSecrets = new TreeSet<>();
 
@@ -669,10 +708,30 @@ public class AlbertDoctor {
 					case SVC_PROVIDERS:
 						for (Element p : Xml.all(config, "provider")) {
 							addName(customProviders, p);
+							customProviderModels.add(p.getAttribute("models"));
+						}
+						for (Element ps : Xml.all(config, "providers")) {
+							if ("true".equals(ps.getAttribute("config:override"))) {
+								providersOverridden = true;
+							}
+						}
+						break;
+					case SVC_RUNTIME:
+						for (Element inst : Xml.all(config, "instance")) {
+							if (!inst.getAttribute("default-model").isEmpty()) {
+								appDefaultModel = inst.getAttribute("default-model");
+							}
 						}
 						break;
 					default:
 						break;
+				}
+			}
+			if (root.getTagName().equals("root")) {
+				for (Element entry : Xml.all(root, "entry")) {
+					if (Xml.ancestor(entry, "alias") != null) {
+						appAliases.put(entry.getAttribute("name"), entry.getAttribute("value"));
+					}
 				}
 			}
 			for (Element e : Xml.all(root, "*")) {
@@ -921,6 +980,68 @@ public class AlbertDoctor {
 			return result;
 		}
 
+		/** Resolves %ALIAS% and ${env:NAME:default} with the environment of this process. */
+		String resolveValue(String raw) {
+			String value = raw == null ? "" : raw.trim();
+			for (int i = 0; i < 3 && value.startsWith("%") && value.endsWith("%") && value.length() > 2; i++) {
+				String alias = appAliases.containsKey(value) ? appAliases.get(value) : engine.aliases.get(value);
+				if (alias == null) {
+					return null;
+				}
+				value = alias.trim();
+			}
+			Matcher m = Pattern.compile("^\\$\\{env:([^:}]+):?([^}]*)\\}$").matcher(value);
+			if (m.matches()) {
+				String env = System.getenv(m.group(1));
+				value = env != null && !env.isEmpty() ? env : m.group(2);
+			}
+			return value;
+		}
+
+		/** The model the agents run on, with its source; null when nothing names one. */
+		String[] defaultModel() {
+			String env = System.getenv("tl_ai_default_model");
+			if (appDefaultModel != null && !appDefaultModel.trim().equals("%AI_DEFAULT_MODEL%")) {
+				String v = resolveValue(appDefaultModel);
+				return v == null || v.isEmpty() ? null : new String[] { v, "default-model of AgentRuntimeService" };
+			}
+			return env == null || env.isEmpty() ? null : new String[] { env, "tl_ai_default_model in this shell" };
+		}
+
+		/** Model ids that some provider offers; null when the engine aliases are unknown. */
+		Set<String> offeredModels() {
+			Set<String> result = new TreeSet<>();
+			if (!providersOverridden) {
+				if (engine.aliases.isEmpty()) {
+					return null;
+				}
+				for (String alias : engine.aliases.keySet()) {
+					if (alias.endsWith("_MODELS%")) {
+						result.addAll(split(resolveValue(alias)));
+					}
+				}
+			}
+			for (String raw : customProviderModels) {
+				String v = resolveValue(raw);
+				if (v != null) {
+					result.addAll(split(v));
+				}
+			}
+			return result;
+		}
+
+		/** A sentence when the default model is offered by no provider, else null. */
+		String modelProblem() {
+			String[] model = defaultModel();
+			Set<String> offered = offeredModels();
+			if (model == null || offered == null || offered.contains(model[0])) {
+				return null;
+			}
+			return "the default model \"" + model[0] + "\" (" + model[1] + ") is in no provider's model list "
+				+ offered + "; the start fails (\"no provider exposes model\"). Set tl_<provider>_models so that it"
+				+ " contains the model";
+		}
+
 		Map<String, Boolean> secrets() {
 			Map<String, Boolean> result = new LinkedHashMap<>();
 			for (String[] p : SHIPPED_PROVIDERS) {
@@ -1012,6 +1133,14 @@ public class AlbertDoctor {
 			for (Map.Entry<String, Boolean> e : secrets().entrySet()) {
 				println("  " + e.getKey() + ": " + (e.getValue() ? "yes" : "no"));
 			}
+			String[] model = defaultModel();
+			Set<String> offered = offeredModels();
+			println("llm.defaultModel: " + (model == null ? "none (first model of the first provider with a key)"
+				: model[0] + " (" + model[1] + ")"));
+			println("llm.offeredModels: " + (offered == null ? "unknown (engine artifacts not local)" : join(offered)));
+			if (modelProblem() != null) {
+				println("llm.WARN: " + modelProblem());
+			}
 			println("metaConf.devel-secrets.xml (deploy/local): "
 				+ (develSecretsLine == null ? "no deploy/local metaConf.txt" : develSecretsLine));
 			println("");
@@ -1076,7 +1205,8 @@ public class AlbertDoctor {
 			boolean anySecret = secrets().values().stream().anyMatch(b -> b);
 			println("2  provider and key: " + (anySecret ? "DONE (a key is present here)" : "APPLY (no key found here)")
 				+ (customProviders.isEmpty() ? "" : " - own providers: " + join(customProviders))
-				+ ("missing".equals(develSecretsLine) ? " - add devel-secrets.xml to deploy/local metaConf.txt" : ""));
+				+ ("missing".equals(develSecretsLine) ? " - add devel-secrets.xml to deploy/local metaConf.txt" : "")
+				+ (modelProblem() != null ? " - WARN " + modelProblem() : ""));
 			if (ui.equals("classic")) {
 				println("3B classic Albert tab: " + (classicChatGrants.isEmpty() ? "APPLY (security.xml has no tl-chat view grant)" : "DONE"));
 			} else {
@@ -1316,6 +1446,9 @@ public class AlbertDoctor {
 			} else if (!filesPerService.containsKey(SVC_TOOL_ACCESS)) {
 				out.add(new Finding(false, "AiToolAccessService", "not configured: no role gets Albert tools by role, and"
 					+ " every account that can log in can talk to Albert"));
+			}
+			if (modelProblem() != null) {
+				out.add(new Finding(false, "model", modelProblem()));
 			}
 			if (!toolAccessRoles.isEmpty() && !backgroundAllowlist) {
 				out.add(new Finding(true, "AiToolAccessService", "<tool-access> names roles but there is no"
