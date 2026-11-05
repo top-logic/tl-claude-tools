@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+	Albert page (React UI). Fallback for engines that ship no chat page in tl-chat.
+	Copy to WEB-INF/views/{{APP_VIEW_DIR}}/albert.view.xml. No other placeholder.
+
+	Parts: the list of the own chats, the conversation, and the rail with progress and sources.
+	The chat-id "albert" names the conversation. A <chat-dock> with the same chat-id shows the same
+	conversation on every other page (templates/chat-dock.app.view.xml).
+
+	Scripts in <data-list> take their inputs as positional arguments ("session -> ..."). All other
+	view scripts take them as variables ($session).
+-->
+<view>
+	<channels>
+		<channel name="chatSession"/>
+		<channel name="paneObject"/>
+		<channel name="progressBadge"/>
+	</channels>
+	<chat chat-id="albert" direction="row">
+		<data-list collapsible="true" row-actions="hover" row-channel="session" search="true"
+			observed-types="tl.ai.execution:AgentSession, tl.ai.execution:AgentExecution"
+			selection="chatSession"
+		>
+			<title><en>Chats</en><de>Chats</de></title>
+			<commands>
+				<generic-command image="css:bi bi-plus-lg">
+					<label><en>New chat</en><de>Neuer Chat</de></label>
+					<write-channel name="chatSession" clear="true"/>
+				</generic-command>
+			</commands>
+			<empty-text><en>No chats yet</en><de>Noch keine Chats</de></empty-text>
+			<lines>
+				<line attribute="title"/>
+			</lines>
+			<row-commands>
+				<generic-command clique="delete" image="css:bi bi-trash" inputs="session">
+					<label><en>Delete</en><de>Löschen</de></label>
+					<execute-script>
+						<inputs><input channel="chatSession"/></inputs>
+						<function><![CDATA[{
+							aiSessionDelete($session);
+							ifElse($session == $chatSession, null, $chatSession);
+						}]]></function>
+						<with-result><write-channel name="chatSession"/></with-result>
+					</execute-script>
+				</generic-command>
+			</row-commands>
+			<rows><![CDATA[all(`tl.ai.execution:AgentSession`)
+				.filter(s -> $s.get(`tl.ai.execution:AgentSession#owner`) == currentUser())
+				.filter(s -> $s.get(`tl.ai.execution:AgentSession#kind`) == `tl.ai.execution:SessionKind#CHAT`)
+				.sort((s -> $s.get(`tl.ai.execution:AgentSession#lastUpdated`)).comparator().desc())]]></rows>
+		</data-list>
+		<panel fill="true">
+			<chat-conversation input="chatSession" present="paneObject">
+				<selection name="Open object" channel="paneObject"/>
+			</chat-conversation>
+		</panel>
+		<chat-rail input="paneObject" strip="true">
+			<section name="progress" badge="progressBadge" icon="css:bi bi-list-check" open="true">
+				<label><en>Progress</en><de>Fortschritt</de></label>
+				<data-list collapsible="false" count="progressBadge" search="false"
+					observed-types="tl.ai.execution:AgentTask"
+				>
+					<inputs><input channel="chatSession"/></inputs>
+					<empty-text><en>Nothing planned yet</en><de>Noch nichts geplant</de></empty-text>
+					<lines><line attribute="subject"/></lines>
+					<rows><![CDATA[session -> ifElse(isEmpty($session), list(),
+						$session.referers(`tl.ai.execution:AgentTask#session`)
+							.sort((t -> $t.get(`tl.ai.execution:AgentTask#ordinal`)).comparator()))]]></rows>
+				</data-list>
+			</section>
+			<section name="sources" icon="css:bi bi-quote">
+				<label><en>Sources</en><de>Quellen</de></label>
+				<chat-sources/>
+			</section>
+		</chat-rail>
+	</chat>
+</view>

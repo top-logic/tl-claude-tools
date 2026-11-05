@@ -1,0 +1,63 @@
+<!--
+	Each account reads its own chats. ONLY for engines that do not ship
+	WEB-INF/conf/tl-ai-core.chatSecurity.config.xml in tl-ai-core (Trac #30144); "detect" says
+	which case applies (step 4). Remove these entries after an engine update that ships the file.
+
+	Merge each <config> into the app's existing <config> of the same service-class in
+	WEB-INF/conf/{{APP}}.conf.config.xml. A file may configure a service-class only once.
+
+	Grant only Read: aiSessionDelete and aiSessionRename check the owner themselves, and the agent
+	engine writes the chats in a system context.
+-->
+<config service-class="com.top_logic.base.services.InitialRolesManager">
+	<instance>
+		<roles>
+			<role name="AgentSessionOwner"/>
+		</roles>
+	</instance>
+</config>
+
+<config service-class="com.top_logic.tool.boundsec.manager.AccessManager">
+	<instance>
+		<role-rules>
+			<rules>
+				<rule id="own-session" meta-element="tl.ai.execution:AgentSession"
+					role="AgentSessionOwner" type="reference">
+					<path>
+						<step attribute="tl.ai.execution:AgentSession#owner"/>
+					</path>
+				</rule>
+				<rule id="own-session-task" meta-element="tl.ai.execution:AgentTask"
+					role="AgentSessionOwner" type="reference">
+					<path>
+						<step attribute="tl.ai.execution:AgentTask#session"/>
+						<step attribute="tl.ai.execution:AgentSession#owner"/>
+					</path>
+				</rule>
+				<rule id="own-session-execution" meta-element="tl.ai.execution:AgentExecution"
+					role="AgentSessionOwner" type="reference">
+					<path>
+						<step attribute="tl.ai.execution:AgentExecution#session"/>
+						<step attribute="tl.ai.execution:AgentSession#owner"/>
+					</path>
+				</rule>
+			</rules>
+		</role-rules>
+	</instance>
+</config>
+
+<config service-class="com.top_logic.model.security.SecurityConfigurationService">
+	<instance>
+		<security-config>
+			<class name="tl.ai.execution:AgentSession">
+				<grant operation="Read" roles="AgentSessionOwner"/>
+			</class>
+			<class name="tl.ai.execution:AgentTask">
+				<grant operation="Read" roles="AgentSessionOwner"/>
+			</class>
+			<class name="tl.ai.execution:AgentExecution">
+				<grant operation="Read" roles="AgentSessionOwner"/>
+			</class>
+		</security-config>
+	</instance>
+</config>

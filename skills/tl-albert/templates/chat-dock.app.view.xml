@@ -1,0 +1,74 @@
+<!--
+	Albert on every page (React UI): a button in the footer of the app shell that opens the chat in
+	a dock. Merge into the app's overlay WEB-INF/views/app.view.xml: the <channels> into the
+	<channels> of the view (create it if absent), the <app-shell> as a child of <view>. If the
+	overlay has an <app-shell> already, add the <footer> to it.
+
+	chat-id: write it twice (on <chat-dock> and on the <chat> inside); the two must agree. With the
+	chat-id of the Albert page ("albert") the dock shows the same conversation and hides itself
+	while the Albert page is on screen. Without an Albert page, keep "albert" too.
+
+	The dock has no access control of its own. An account without an Albert role sees the button,
+	and the chat answers that no agent is available.
+
+	No present="..." on the <chat-conversation> of the dock. With the chat-id of the page, the
+	conversation then has two places for a table, and Albert can present a table into the hidden
+	dock while the user is on the page. Dock without an Albert page: you can add
+	present="dockPaneObject" and <chat-rail input="dockPaneObject"> together with a channel
+	"dockPaneObject".
+-->
+<view xmlns:config="http://www.top-logic.com/ns/config/6.0">
+	<channels>
+		<channel name="dockSession"/>
+		<channel name="dockProgressBadge"/>
+	</channels>
+	<app-shell>
+		<footer>
+			<chat-dock chat-id="albert" icon="css:bi bi-stars">
+				<label><en>Albert</en><de>Albert</de></label>
+				<chat chat-id="albert" direction="row">
+					<data-list collapsed="true" collapsible="true" search="true"
+						observed-types="tl.ai.execution:AgentSession, tl.ai.execution:AgentExecution"
+						selection="dockSession"
+					>
+						<title><en>Chats</en><de>Chats</de></title>
+						<commands>
+							<generic-command image="css:bi bi-plus-lg">
+								<label><en>New chat</en><de>Neuer Chat</de></label>
+								<write-channel name="dockSession" clear="true"/>
+							</generic-command>
+						</commands>
+						<empty-text><en>No chats yet</en><de>Noch keine Chats</de></empty-text>
+						<lines><line attribute="title"/></lines>
+						<rows><![CDATA[all(`tl.ai.execution:AgentSession`)
+							.filter(s -> $s.get(`tl.ai.execution:AgentSession#owner`) == currentUser())
+							.filter(s -> $s.get(`tl.ai.execution:AgentSession#kind`) == `tl.ai.execution:SessionKind#CHAT`)
+							.sort((s -> $s.get(`tl.ai.execution:AgentSession#lastUpdated`)).comparator().desc())]]></rows>
+					</data-list>
+					<panel fill="true">
+						<chat-conversation input="dockSession"/>
+					</panel>
+					<chat-rail open="false" strip="true">
+						<section name="progress" badge="dockProgressBadge" icon="css:bi bi-list-check" open="true">
+							<label><en>Progress</en><de>Fortschritt</de></label>
+							<data-list collapsible="false" count="dockProgressBadge" search="false"
+								observed-types="tl.ai.execution:AgentTask"
+							>
+								<inputs><input channel="dockSession"/></inputs>
+								<empty-text><en>Nothing planned yet</en><de>Noch nichts geplant</de></empty-text>
+								<lines><line attribute="subject"/></lines>
+								<rows><![CDATA[session -> ifElse(isEmpty($session), list(),
+									$session.referers(`tl.ai.execution:AgentTask#session`)
+										.sort((t -> $t.get(`tl.ai.execution:AgentTask#ordinal`)).comparator()))]]></rows>
+							</data-list>
+						</section>
+						<section name="sources" icon="css:bi bi-quote">
+							<label><en>Sources</en><de>Quellen</de></label>
+							<chat-sources/>
+						</section>
+					</chat-rail>
+				</chat>
+			</chat-dock>
+		</footer>
+	</app-shell>
+</view>

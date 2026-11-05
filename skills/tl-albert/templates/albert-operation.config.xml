@@ -1,0 +1,32 @@
+<!--
+	Optional (React UI): show the Albert page only to the Albert roles, through
+	<access-control operation="AlbertChat"/> on the nav-item. Do all three parts, else the
+	application does not start ("The command group ... does not exist").
+
+	{{ALBERT_ROLES}}: the roles that talk to Albert, comma-separated (the same as in <agent-access>).
+-->
+
+<!-- Part 1: register the operation. Merge into the CommandGroupRegistry <config> of
+     WEB-INF/conf/{{APP}}.conf.config.xml (create it if absent). -->
+<config service-class="com.top_logic.tool.boundsec.simple.CommandGroupRegistry">
+	<instance>
+		<group name="AlbertChat" type="read"/>
+	</instance>
+</config>
+
+<!-- Part 2: declare and grant it on the security root. Merge the <singleton> into the
+     <security-config> of the app's SecurityConfigurationService. -->
+<singleton name="SecurityStructure#ROOT">
+	<operations>
+		<operation name="AlbertChat"/>
+	</operations>
+	<grant operation="AlbertChat" roles="{{ALBERT_ROLES}}"/>
+</singleton>
+
+<!-- Part 3: texts. Add to WEB-INF/conf/resources/{{APP}}.app-messages_en.properties:
+commandGroup.AlbertChat = Albert chat
+commandGroup.AlbertChat.tooltip = Talk to Albert, the AI assistant of this application.
+     and to {{APP}}.app-messages_de.properties:
+commandGroup.AlbertChat = Albert-Chat
+commandGroup.AlbertChat.tooltip = Mit Albert sprechen, dem KI-Assistenten dieser Anwendung.
+     Keep the bundles normalized (sorted, UTF-8), else the build reports "Resource check: Not normalized". -->

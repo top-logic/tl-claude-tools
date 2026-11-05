@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+	Own LLM provider: another endpoint, a gateway, Amazon Bedrock. Only when the shipped providers
+	(anthropic, openai, mistral, xai with the secrets tl_<provider>_api_key) do not fit.
+	Target: WEB-INF/autoconf/com.top_logic.tl.ai.core.provider.LLMProviderService.config.xml
+
+	{{PROVIDER_CLASS}}: e.g.
+	  com.top_logic.tl.ai.core.provider.openai.OpenAICompatibleProviderConfig  (OpenAI-compatible gateway)
+	  com.top_logic.tl.ai.core.provider.bedrock.BedrockConverseProviderConfig  (Amazon Bedrock)
+	  Read doc:ai/providers for the attributes of each class.
+	{{PROVIDER_NAME}}: a name of your own, e.g. "gateway".
+	{{BASE_URL_ALIAS}}: an alias of the app's conf.xml (e.g. %GATEWAY_BASE_URL%), so that each
+	  environment sets its own URL.
+	{{MODELS}}: comma-separated model ids of the endpoint.
+	{{SECRET_NAME}}: the name of the secret with the key (e.g. gateway_api_key). The value comes
+	  from the environment variable of that name or ~/.top-logic/secrets/<name>. Never the key here.
+
+	config:override="true" on <providers>: only this provider, no shipped provider. Without it the
+	shipped providers stay, and a model that two providers offer stops the start of
+	AgentRuntimeService (then set default-provider).
+
+	A model that models.dev does not know needs an entry in <model-catalog><model-overrides>.
+-->
+<application config:interface="com.top_logic.basic.config.ApplicationConfig$Config"
+	xmlns:config="http://www.top-logic.com/ns/config/6.0"
+>
+	<services>
+		<config service-class="com.top_logic.tl.ai.core.provider.LLMProviderService">
+			<instance class="com.top_logic.tl.ai.core.provider.LLMProviderService">
+				<providers config:override="true">
+					<provider class="{{PROVIDER_CLASS}}"
+						name="{{PROVIDER_NAME}}"
+						base-url="{{BASE_URL_ALIAS}}"
+						models="{{MODELS}}"
+					>
+						<api-key name="{{SECRET_NAME}}"/>
+					</provider>
+				</providers>
+			</instance>
+		</config>
+		<!-- The model of the agents. Alternative: the variable tl_ai_default_model per environment. -->
+		<config service-class="com.top_logic.tl.ai.core.agent.AgentRuntimeService">
+			<instance class="com.top_logic.tl.ai.core.agent.AgentRuntimeService"
+				default-model="{{DEFAULT_MODEL}}"
+			/>
+		</config>
+	</services>
+</application>

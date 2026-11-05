@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+	What Albert may do for which role. Target:
+	WEB-INF/autoconf/com.top_logic.tl.ai.core.security.AiToolAccessService.config.xml
+	If the app configures AiToolAccessService already, merge into that <config> instead.
+
+	One <role> block per decided role, in <tool-access> and in <agent-access>:
+	  {{READ_ROLE}}  - a role that talks to Albert and may not let Albert change data.
+	  {{WRITE_ROLE}} - a role that may let Albert change data (data.write).
+	Remove the block of a kind that the user did not decide. Every role must be held on
+	SecurityStructure#ROOT (singleton-rule): tool access and agent access ask for the role there.
+
+	The tool policy only says which kinds of tools. Which objects a tool reads or changes is decided
+	by the <security-config> of the app, for each call again.
+-->
+<application config:interface="com.top_logic.basic.config.ApplicationConfig$Config"
+	xmlns:config="http://www.top-logic.com/ns/config/6.0"
+>
+	<services>
+		<config service-class="com.top_logic.tl.ai.core.security.AiToolAccessService">
+			<instance class="com.top_logic.tl.ai.core.security.AiToolAccessService">
+				<tool-access>
+					<role name="{{READ_ROLE}}">
+						<grants>
+							<grant group="model.read"/>
+							<grant group="data.read"/>
+						</grants>
+						<denies>
+							<deny group="data.write"/>
+							<deny group="script"/>
+							<deny group="egress"/>
+							<deny group="model.structure"/>
+							<deny group="agent.authoring"/>
+						</denies>
+					</role>
+					<role name="{{WRITE_ROLE}}">
+						<grants>
+							<grant group="model.read"/>
+							<grant group="data.read"/>
+							<grant group="data.write"/>
+						</grants>
+						<denies>
+							<deny group="script"/>
+							<deny group="egress"/>
+							<deny group="model.structure"/>
+							<deny group="agent.authoring"/>
+						</denies>
+					</role>
+				</tool-access>
+				<!-- Nothing for all accounts: tools only through a role. -->
+				<baseline/>
+				<!-- Mandatory when a role is named: what a run without a person may do. -->
+				<background-allowlist>
+					<grant group="model.read"/>
+					<grant group="data.read"/>
+				</background-allowlist>
+				<!-- Only these roles talk to Albert. Without default="none" every account talks to Albert. -->
+				<agent-access default="none">
+					<role name="{{READ_ROLE}}">
+						<grants><grant agents="TL_SingleAgent"/></grants>
+					</role>
+					<role name="{{WRITE_ROLE}}">
+						<grants><grant agents="TL_SingleAgent"/></grants>
+					</role>
+				</agent-access>
+			</instance>
+		</config>
+	</services>
+</application>

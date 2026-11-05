@@ -1,0 +1,16 @@
+<!--
+	Classic UI only: the read right on the Albert tab. Without it a non-admin account does not see the
+	tab. Add one <profile> per role that talks to Albert to WEB-INF/conf/security.xml (merge into an
+	existing <profile> of that role). The startup hook "access-configuration" imports security.xml
+	again when the file changes: restart the application.
+
+	{{ROLE}}: a role that talks to Albert.
+-->
+<profile name="{{ROLE}}">
+	<view name="tl-chat/chat/tabLayout.layout.xml#TabLayout">
+		<commandGroup name="Read"/>
+	</view>
+	<view name="tl-chat/chat/agent.layout.xml#agent">
+		<commandGroup name="Read"/>
+	</view>
+</profile>

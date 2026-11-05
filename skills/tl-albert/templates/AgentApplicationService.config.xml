@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+	Domain knowledge for Albert: a glossary, fixed business rules, units. Albert gets it in every
+	run. Target: WEB-INF/autoconf/com.top_logic.tl.ai.core.agent.AgentApplicationService.config.xml
+	If the app configures AgentApplicationService already, merge the <contributor> into it.
+
+	{{APP_NAME}}: the display name of the application.
+	{{GLOSSARY_EN}} / {{GLOSSARY_DE}}: a draft from the model labels and tooltips. One line for each
+	business type: what it is, how the user names it, the important attributes and their units.
+	Only facts that the labels or the user give. Keep it short: every run pays for this text.
+
+	The name "application-context" is the entry that the skill TL_init reads and writes.
+-->
+<application config:interface="com.top_logic.basic.config.ApplicationConfig$Config"
+	xmlns:config="http://www.top-logic.com/ns/config/6.0"
+>
+	<services>
+		<config service-class="com.top_logic.tl.ai.core.agent.AgentApplicationService">
+			<instance class="com.top_logic.tl.ai.core.agent.AgentApplicationService">
+				<prompt-contributors>
+					<contributor class="com.top_logic.tl.ai.core.agent.TextPromptContributor"
+						agents="TL_SingleAgent"
+						name="application-context"
+					>
+						<text>
+							<en><![CDATA[## {{APP_NAME}}: domain knowledge
+{{GLOSSARY_EN}}]]></en>
+							<de><![CDATA[## {{APP_NAME}}: Fachwissen
+{{GLOSSARY_DE}}]]></de>
+						</text>
+					</contributor>
+				</prompt-contributors>
+			</instance>
+		</config>
+	</services>
+</application>

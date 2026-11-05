@@ -1,0 +1,28 @@
+<!--
+	Navigation entry for the Albert page (React UI). Merge into the app's overlay
+	WEB-INF/views/app.view.xml, inside the existing <sidebar config:ref="sidebar">. Do not add a
+	second <sidebar>. The overlay root needs xmlns:config="http://www.top-logic.com/ns/config/6.0".
+
+	{{ALBERT_VIEW}}: the view to show.
+	  - Engine ships a chat page: the path that "detect" prints as chatView (e.g. tl-chat/albert.view.xml).
+	  - Else: the app's copy of templates/albert.view.xml (e.g. myapp/albert.view.xml).
+
+	The id "albert" must be unique in the whole view.
+
+	<access-control>: optional. It hides the page from accounts without an Albert role. It needs
+	all three parts of templates/albert-operation.config.xml, else the application does not start.
+	Remove the line if you do not use the operation.
+-->
+<sidebar config:ref="sidebar">
+	<items>
+		<nav-item id="albert"
+			config:position="before"
+			config:reference="system-separator"
+			icon="css:bi bi-chat-dots"
+		>
+			<label><en>Albert</en><de>Albert</de></label>
+			<access-control operation="AlbertChat"/>
+			<view-ref view="{{ALBERT_VIEW}}"/>
+		</nav-item>
+	</items>
+</sidebar>
