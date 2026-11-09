@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+	REST security probe for the object security migration. LOCAL DEVELOPMENT ONLY.
+
+	Copy to: deploy/local/webapp/WEB-INF/autoconf/com.top_logic.service.openapi.server.OpenApiServer.zz-security-probe.config.xml
+	(the "local" deploy aspect is part of the default development build only; check that the
+	production build uses another aspect, e.g. deploy-aspects "prod" in the CI).
+
+	Why: the classic UI gives non-admin users no way to run TL Script, but API clients and agents will.
+	Each path runs its script in the calling user's context, secured exactly like an API call, so you see
+	what object security really lets this user read and write.
+
+	Usage (dev app, BasicAuth with the normal login of a test user; passwords are set in the admin UI):
+	  curl -s -u T_READER:<password> http://localhost:8080/<context>/api/securityProbe/objectAccess
+	In PowerShell use curl.exe (curl is an alias for Invoke-WebRequest there).
+	New or changed paths need an app restart. Nothing references this file; deleting it only removes
+	the endpoint.
+
+	config:override="true" replaces the OpenAPI server configuration. If the application has its own
+	OpenAPI server configuration, merge these paths into it instead.
+
+	ADAPT: the type lists in the scripts (<module>:<Type>), and add own paths for concrete test points
+	(e.g. "which suppliers does a supplier user get", "which releases with which suppliers").
+-->
+<application config:interface="com.top_logic.basic.config.ApplicationConfig$Config"
+	xmlns:config="http://www.top-logic.com/ns/config/6.0"
+>
+	<services>
+		<config service-class="com.top_logic.service.openapi.server.OpenApiServer"
+			config:override="true"
+		>
+			<instance class="com.top_logic.service.openapi.server.OpenApiServer"
+				base-url="/api"
+			>
+				<information
+					title="Object security probe (local)"
+					version="1.0"
+				/>
+				<authentications>
+					<basic-authentication
+						domain="BasicAuth"
+						in-user-context="true"
+					/>
+				</authentications>
+				<paths>
+					<!-- Per type: how many objects the user gets with all(), how many he may read/write/delete, samples. -->
+					<PathItem path="/securityProbe/objectAccess">
+						<operations>
+							<operation
+								authentication="BasicAuth"
+								method="GET"
+								summary="Objects of the listed types the calling user gets, and his rights on them"
+							>
+								<responses/>
+								<implementation>
+									<operation><![CDATA[{
+    // ADAPT: the business types to check (role carriers, master data, parts).
+    types = [
+        `app.core:Order`,
+        `app.core:OrderItem`,
+        `app.master:Supplier`
+    ];
+    check = type -> {
+        objs = all($type);
+        {
+            "type": $type.label(),
+            "count": $objs.size(),
+            "canRead": $objs.filter(o -> canRead($o)).size(),
+            "canWrite": $objs.filter(o -> canWrite($o)).size(),
+            "canDelete": $objs.filter(o -> canDelete($o)).size(),
+            "samples": ($objs.size() > 10 ? $objs.subList(0, 10) : $objs).map(o -> $o.label())
+        }
+    };
+    {
+        "user": currentUser().toString(),
+        "types": $types.map(t -> $check($t))
+    }
+}]]></operation>
+								</implementation>
+							</operation>
+						</operations>
+					</PathItem>
+					<!-- Per type: which attributes of the first visible object are not readable / not writable. -->
+					<PathItem path="/securityProbe/attributeAccess">
+						<operations>
+							<operation
+								authentication="BasicAuth"
+								method="GET"
+								summary="Attributes of the first visible object per type that the calling user may not read or write"
+							>
+								<responses/>
+								<implementation>
+									<operation><![CDATA[{
+    // ADAPT: the types to check. Needs Read on tl.model (access parent on tl.model:TLModelPart).
+    types = [
+        `app.core:Order`,
+        `app.master:Supplier`
+    ];
+    parts = type -> $type.get(`tl.model:TLStructuredType#localParts`)
+        .union($type.get(`tl.model:TLClass#generalizations`).flatMap(g -> $g.get(`tl.model:TLStructuredType#localParts`)));
+    check = type -> {
+        first = all($type).firstElement();
+        {
+            "type": $type.label(),
+            "first": $first == null ? null : $first.label(),
+            "notReadable": $first == null ? [] : $parts($type)
+                .filter(p -> !canReadAttribute($first, $p))
+                .map(p -> $p.get(`tl.model:TLNamedPart#name`)),
+            "notWritable": $first == null ? [] : $parts($type)
+                .filter(p -> !canWriteAttribute($first, $p))
+                .map(p -> $p.get(`tl.model:TLNamedPart#name`))
+        }
+    };
+    {
+        "user": currentUser().toString(),
+        "types": $types.map(t -> $check($t))
+    }
+}]]></operation>
+								</implementation>
+							</operation>
+						</operations>
+					</PathItem>
+					<!-- Known engine leak (TL 8.0.0-alpha11): changeLog() without an object. Compare a restricted user with root. -->
+					<PathItem path="/securityProbe/changeLog">
+						<operations>
+							<operation
+								authentication="BasicAuth"
+								method="GET"
+								summary="What changeLog() without an object reveals to the calling user"
+							>
+								<responses/>
+								<implementation>
+									<operation><![CDATA[{
+    log = changeLog(maxEntries: 500);
+    changes = $log.flatMap(cs -> $cs.get(`tl.changelog:ChangeSet#changes`));
+    updates = $changes.filter(c -> $c.instanceOf(`tl.changelog:Update`));
+    // changed object filtered away by object security (or deleted meanwhile)
+    hidden = $updates.filter(u -> $u.get(`tl.changelog:Change#object`) == null);
+    mods = $hidden.flatMap(u -> $u.get(`tl.changelog:Update#modifications`));
+    describe = m -> "{0}: {1} -> {2}".fill(
+        $m.get(`tl.changelog:Modification#part`).toString(),
+        $m.get(`tl.changelog:Modification#oldValue`).toString(),
+        $m.get(`tl.changelog:Modification#newValue`).toString());
+    samples = $mods.size() > 30 ? $mods.subList(0, 30) : $mods;
+    {
+        "user": currentUser().toString(),
+        "changeSets": $log.size(),
+        "changes": $changes.size(),
+        "updatesOnObjectsNotVisible": $hidden.size(),
+        "samples": $samples.map(m -> $describe($m))
+    }
+}]]></operation>
+								</implementation>
+							</operation>
+						</operations>
+					</PathItem>
+				</paths>
+			</instance>
+		</config>
+	</services>
+</application>

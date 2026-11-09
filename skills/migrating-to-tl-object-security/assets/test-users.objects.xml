@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+	Local-only test accounts for the object security migration: one NON-ADMIN account per business role.
+
+	Copy to: deploy/local/webapp/WEB-INF/data/zz_security_test_users.objects.xml
+	Never into src/main/webapp/WEB-INF/data (imported in production).
+
+	Imported once per FILE NAME (InitialDataSetupService, DB property initial-data.<name>): a new file also
+	reaches existing dev DBs, but a changed, already imported file is never re-imported. For accounts added
+	later, create a new file (e.g. zz_security_test_users_2.objects.xml).
+
+	Role assignments are NOT made here but by the setup task (test-setup.config.xml), which can reference
+	business objects. Passwords can't be set here either (they live in the authentication device's own
+	table): set them once in the admin UI (Administration → accounts).
+
+	ADAPT: one <object> per role; global-id = login name; check the attribute names against tl.accounts in
+	your TL version (e.g. authDeviceID of the DB authentication device).
+-->
+<objects>
+	<object id="1"
+		global-id="T_PLANNER"
+		type="tl.accounts:Person"
+	>
+		<attribute name="name"
+			value="T_PLANNER"
+		/>
+		<attribute name="language"
+			value="de_DE"
+		/>
+		<attribute name="country"
+			value="DE"
+		/>
+		<attribute name="timezone"
+			value="Europe/Berlin"
+		/>
+		<attribute name="authDeviceID"
+			value="dbSecurity"
+		/>
+		<attribute name="restrictedUser"
+			value="false"
+		/>
+		<attribute name="contact">
+			<object id="2"
+				global-id="account:T_PLANNER"
+				type="Contacts:PersonContact"
+			>
+				<attribute name="name"
+					value="Planner"
+				/>
+				<attribute name="firstname"
+					value="Test"
+				/>
+				<attribute name="email"
+					value="t_planner@example.invalid"
+				/>
+			</object>
+		</attribute>
+	</object>
+	<!-- T_READER, T_EXTERNAL, T_TENANTADMIN, T_SYSADMIN, ... analogously (unique ids). -->
+</objects>
