@@ -89,8 +89,8 @@ An administrator bypasses the tool policy and the model security. A test as `roo
    - The chat list shows only the chats of this account.
    - Read-only role: tell Albert to change an object. Albert refuses. The object stays unchanged.
    - Write role: tell Albert to change an object. Albert shows an approval card (*Allow once*, *Allow in this chat*, *Reject*). After *Allow once*, the object has the new value.
-   - Account without an Albert role: the Albert page is absent (with the `AlbertChat` operation). In the dock, a message is not sent: `/chat/send` answers 403 "no agent available". The UI of 8.0.0-alpha12 shows no message for this and keeps the text in the input field.
-   - Dock: open it on a page other than the Albert page. On the Albert page the dock hides itself.
+   - Account without an Albert role: the Albert page is absent (with the `AlbertChat` operation). The dock button stays visible. A message from the dock is not sent: the chat shows "No agent is available to you" (8.0.0-alpha12: `/chat/send` answers 403 and the UI shows nothing). The text stays in the input field.
+   - Dock: open it on a page other than the Albert page. Ask for a table: the table opens in the rail of the dock. On the Albert page the dock hides itself.
 6. If a browser tool is available (a Playwright MCP server, or `playwright-core` with a local Chromium), do the checks in the browser. Give the browser work to a subagent with a self-contained brief (URL, accounts, passwords, checks, expected results). Take one screenshot of the Albert page for each role.
 7. If no browser tool is available, give the user the checks of item 5 as a short numbered list with the accounts. Wait for the results.
 8. If a check fails, read `references/pitfalls.md`. Fix the cause, then go back to step 5.

@@ -1,6 +1,6 @@
 # Albert integration: the full how-to
 
-Fallback how-to of the skill `tl-albert`. Verified on TopLogic 8.0.0-alpha12. If the engine of the app ships the article `doc:ai/adding-albert` (see `engine.names` of `detect`), that article has priority.
+Fallback how-to of the skill `tl-albert`. Verified on TopLogic 8.0.0-alpha12 and 8.0.0-alpha13. If the engine of the app ships the article `doc:ai/adding-albert` (see `engine.names` of `detect`), that article has priority.
 
 Paths are relative to `src/main/webapp/WEB-INF/` of the app module. Exception: `pom.xml` and `deploy/` in the module directory.
 
@@ -66,6 +66,7 @@ Add the AI modules to `pom.xml`. Do not write a version.
 - Local development: the key can also be in the file `~/.top-logic/secrets/<secret name>`. This needs the line `devel-secrets.xml` after `devel-h2.xml` in `deploy/local/webapp/WEB-INF/conf/metaConf.txt`. The archetype writes this line.
 - Own provider (other endpoint, gateway, Amazon Bedrock): `templates/LLMProviderService.config.xml`. Give the key as `<api-key name="..."/>`, not as an alias. Read `doc:ai/providers` for the provider classes and their attributes.
 - A model that models.dev does not know needs an entry in `<model-catalog><model-overrides>` of `LLMProviderService`.
+- A provider only for the local development (for example an own model server) goes into `local.conf.config.xml` next to `local.conf.xml` of the archetype (git-ignored). `detect` reads it for the model facts.
 - If a shipped provider and an own provider have the same model, the start fails. Use `<providers config:override="true">` or name the provider (`default-provider`).
 
 ## 3A. [React] Albert page

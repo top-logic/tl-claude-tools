@@ -10,10 +10,10 @@
 	The id "albert" must be unique in the whole view.
 
 	Place: "detect" prints engine.shellIds. With the id "application" (8.0.0-alpha13 and later), the
-	item goes into <section id="application">, as below (if the overlay has this section already,
-	add the item to it). With "system-separator" and no
-	"application" (8.0.0-alpha12), remove the <section> wrapper and put
-	config:position="before" config:reference="system-separator" on the <nav-item>.
+	item goes into <section id="application">, as below. If the overlay has this section already, add
+	the item to it. With "system-separator" and no "application" (8.0.0-alpha12), remove the
+	<section> wrapper and put config:position="before" config:reference="system-separator" on the
+	<nav-item>.
 
 	<access-control>: optional. It hides the page from accounts without an Albert role. It needs
 	all three parts of templates/albert-operation.config.xml, else the application does not start.

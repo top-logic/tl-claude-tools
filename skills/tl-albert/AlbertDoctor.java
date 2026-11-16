@@ -561,7 +561,16 @@ public class AlbertDoctor {
 			readXml(webInf.resolve("layouts"), layouts, ".xml");
 			readXml(webInf.resolve("model"), models, ".model.xml");
 			for (XmlFile f : configs) {
-				readConfig(f);
+				readConfig(f, false);
+			}
+			// The developer-local overlay of the archetype (tl_config=local.conf.xml, git-ignored): its
+			// providers and aliases count for the model facts, but it is no place for the integration.
+			for (String name : new String[] { "local.conf.xml", "local.conf.config.xml" }) {
+				Path local = module.resolve(name);
+				Document doc = Files.isRegularFile(local) ? Xml.parse(local) : null;
+				if (doc != null) {
+					readConfig(new XmlFile(local, rel(local), doc), true);
+				}
 			}
 			for (XmlFile f : views) {
 				readView(f);
@@ -690,15 +699,17 @@ public class AlbertDoctor {
 			}
 		}
 
-		void readConfig(XmlFile f) {
+		void readConfig(XmlFile f, boolean local) {
 			Element root = f.doc.getDocumentElement();
 			for (Element config : Xml.all(root, "config")) {
 				String svc = config.getAttribute("service-class");
 				if (svc.isEmpty()) {
 					continue;
 				}
-				servicesPerFile.computeIfAbsent(f.rel, k -> new TreeMap<>()).merge(svc, 1, Integer::sum);
-				filesPerService.computeIfAbsent(svc, k -> new TreeSet<>()).add(f.rel);
+				if (!local) {
+					servicesPerFile.computeIfAbsent(f.rel, k -> new TreeMap<>()).merge(svc, 1, Integer::sum);
+					filesPerService.computeIfAbsent(svc, k -> new TreeSet<>()).add(f.rel);
+				}
 				switch (svc) {
 					case SVC_ROLES:
 						for (Element role : Xml.all(config, "role")) {
@@ -1256,7 +1267,7 @@ public class AlbertDoctor {
 					: "APPLY - " + (engine.chatView
 					? "use the shipped page: <view-ref view=\"" + ENGINE_CHAT_VIEW + "\"/>; dock: the one of doc:" + ENGINE_HOWTO_DOC
 					: "use templates/albert.view.xml (engine ships no chat page); dock: templates/chat-dock.app.view.xml");
-				println("3A React Albert page: " + (page ? "DONE - " + join(chatViews) : variant)
+				println("3A React Albert page: " + (page ? "DONE - " + (chatViews.isEmpty() ? "view-ref " + ENGINE_CHAT_VIEW : join(chatViews)) : variant)
 					+ (chatDocks.isEmpty() ? "" : "; dock in " + join(chatDocks)));
 			}
 			String step4;
