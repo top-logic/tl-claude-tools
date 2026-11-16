@@ -74,7 +74,7 @@ Answer each line in the result (`ok`, or what you changed).
 8. With the operation of article step 3: `commandGroup.AlbertChat` and `commandGroup.AlbertChat.tooltip` are in the `_en` and `_de` bundles.
 9. The chosen model is in the model list of its provider (`tl_<provider>_models`, else the default list in `WEB-INF/conf/tl-ai-core.conf.xml` of the `tl-ai-core` web-fragment war).
 10. A secret file needs the line `devel-secrets.xml` in `deploy/local/webapp/WEB-INF/conf/metaConf.txt`.
-11. No key in the change. This prints nothing: `git add -A && git diff --cached | grep -nP 'sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-|svcacct-)?[A-Za-z0-9_-]{20,}|xai-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|gh[pousr]_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY-----|api-key\s*=\s*"(?!%|unencrypted:%|")[^"]{12,}"|(?i)(api[_-]?key|secret|token|password)\s*[=:]\s*["\x27]?[A-Za-z0-9_-]{32,}'`.
+11. No key in the change. This stages nothing and prints nothing: `{ git diff HEAD; git ls-files -z --others --exclude-standard | xargs -0 -r cat; } | grep -nP 'sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-|svcacct-)?[A-Za-z0-9_-]{20,}|xai-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|gh[pousr]_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY-----|api-key\s*=\s*"(?!%|unencrypted:%|")[^"]{12,}"|(?i)(api[_-]?key|secret|token|password)\s*[=:]\s*["\x27]?[A-Za-z0-9_-]{32,}'`.
 
 ## 7. Build and boot
 
@@ -90,7 +90,7 @@ Answer each line in the result (`ok`, or what you changed).
 An administrator bypasses the policy and the model security. A test as `root` proves nothing about the roles.
 
 1. Make sure that the app process has the key. If not, ask the user to set it.
-2. Use a new database. If `tmp/` has data of the user, ask first. Stop the app (`tl-app.sh stop`). Move `tmp/` to `<module>/tmp.bak-<date>`, but keep `tmp/app-port.txt` in `tmp/`. Start the app. Tell the user where the backup is.
+2. Use a new database. If `tmp/` has data of the user, ask first. Stop the app (`tl-app.sh stop`). Move `tmp/` to `<module>/tmp.bak-<date>`, but keep `tmp/app-port.txt` in `tmp/`. Add `/tmp.bak-<date>/` to `.git/info/exclude` at once. Start the app. Tell the user where the backup is.
 3. As `root`, make one account for each decided role and one account without an Albert role. Do not make an administrator.
    - React (`/view/`): *Administration > Access control* (German *Zugriffskontrolle*). Make the account in the first tab. Then, in *Groups* (*Gruppen*), add it to the group that the `singleton-rule` of the role names.
    - Classic: *Berechtigungen > Benutzerverwaltung*. End each edit with *Speichern* or *Abbrechen*.
@@ -109,7 +109,7 @@ An administrator bypasses the policy and the model security. A test as `root` pr
 
 ## 9. Deliver
 
-1. Commit on a branch, for example `albert-integration`. Use the commit style of the repository. Never commit or print a key.
+1. Commit on a branch, for example `albert-integration`. Stage only the files of the integration (`git add <file>...`), never `git add -A`. Use the commit style of the repository. Never commit or print a key.
 2. Give the user:
    - A table "role -> what Albert can do" (talk, read, change, tool groups).
    - The changed files and why, the default decisions, the answers of the checklist.
