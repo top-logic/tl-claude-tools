@@ -92,11 +92,12 @@ An administrator bypasses the policy and the model security. A test as `root` pr
 1. Make sure that the app process has the key. If not, ask the user to set it.
 2. Use a new database. If `tmp/` has data of the user, ask first. Stop the app (`tl-app.sh stop`). Move `tmp/` to `<module>/tmp.bak-<date>`, but keep `tmp/app-port.txt` in `tmp/`. Start the app. Tell the user where the backup is.
 3. As `root`, make one account for each decided role and one account without an Albert role. Do not make an administrator.
-   - React (`/view/`): *Administration > Access control > Accounts* (German *Zugriffskontrolle > Konten*). Make the account. Then, in *Groups*, add it to the group that the `singleton-rule` of the role names.
+   - React (`/view/`): *Administration > Access control* (German *Zugriffskontrolle*). Make the account in the first tab. Then, in *Groups* (*Gruppen*), add it to the group that the `singleton-rule` of the role names.
    - Classic: *Berechtigungen > Benutzerverwaltung*. End each edit with *Speichern* or *Abbrechen*.
 4. Do these checks for each account:
    - The Albert page (or dock, or tab) opens. A question about the data gets an answer.
-   - Ask for a table. The table opens in the rail. *Progress* and *Memory* fill during the chat.
+   - Ask for a table. The table opens in the rail.
+   - Tell Albert to remember a fact and to plan two tasks. Approve the card. *Progress* shows the tasks, *Memory* shows the fact.
    - The chat list shows only the chats of this account.
    - Read role: tell Albert to change an object. Albert refuses. The object keeps its value.
    - Write role: tell Albert to change an object. Albert shows an approval card with *Allow once*, *Allow this chat* and *Reject* (German: *Einmal erlauben*, *In diesem Chat erlauben*, *Ablehnen*). After *Allow once*, the object has the new value.
