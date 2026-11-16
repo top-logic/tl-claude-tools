@@ -56,7 +56,7 @@ Do the steps of the article. Rules:
 - **Merge, do not duplicate.** A file configures a `service-class` only once. Add new entries to the existing `<config>`. Make a new file in `autoconf/` only for a service that no file configures.
 - **No version** on the AI dependencies.
 - **Never write a key** into a file of the repository. Use the named secret (`<api-key name="..."/>` for an own provider). The key goes into the environment or `~/.top-logic/secrets/<secret name>`. Ask the user to set it. Do not read it. Do not print it.
-- **Workspace tools**: give `<grant group="workspace"/>` to each Albert role in `<tool-access>` until the engine fixes Trac #30369. Without it, the sections *Progress* and *Memory* of the Albert page stay empty. The article does not have this grant yet.
+- **Workspace tools**: give `<grant group="workspace"/>` to each Albert role in `<tool-access>`. The sections *Progress* and *Memory* of the Albert page use these tools. Without the grant they stay empty.
 - **Domain knowledge**: write only facts from the model labels, the tooltips or the user. Keep it under 30 lines per language. Show the draft in the result.
 - **Labels**: list each model element without a label or tooltip (en, de) in the result. Albert knows the model only from these texts. Add them only if the user agrees.
 
@@ -101,7 +101,7 @@ An administrator bypasses the policy and the model security. A test as `root` pr
    - The chat list shows only the chats of this account.
    - Read role: tell Albert to change an object. Albert refuses. The object keeps its value.
    - Write role: tell Albert to change an object. Albert shows an approval card with *Allow once*, *Allow this chat* and *Reject* (German: *Einmal erlauben*, *In diesem Chat erlauben*, *Ablehnen*). After *Allow once*, the object has the new value.
-   - Account without an Albert role: no Albert page (with the operation `AlbertChat`). The dock button stays visible (Trac #30369). A message from the dock gets "No agent is available to you".
+   - Account without an Albert role: no Albert page (with the operation `AlbertChat`). The dock button stays visible. A message from the dock gets "No agent is available to you".
    - Dock: open it on another page. Albert knows the selection of that page. On the Albert page the dock hides itself.
 5. If a browser tool is available (Playwright MCP, or `playwright-core` with a local Chromium), give the checks to a subagent. Write a self-contained brief: URL, accounts, passwords, checks, expected results, one screenshot of the Albert page for each role, one chat at a time.
 6. Else give the user the checks as a numbered list with the accounts. Wait for the results.
@@ -124,5 +124,5 @@ An administrator bypasses the policy and the model security. A test as `root` pr
 | *Progress* and *Memory* on the Albert page stay empty. | The role has no tool group `workspace`. | Add `<grant group="workspace"/>` to the role. |
 | [Classic] "Momentan nicht bearbeitbar" on an account or group. | An edit did not end with *Speichern* or *Abbrechen*. The lock stays after a restart. | End each edit. A browser script must end it too. |
 | `tl-app.sh stop` does not find the app. The app starts on another port. | Somebody moved `tmp/` while the app ran, or moved `tmp/app-port.txt` too. | Stop the app first. Keep `tmp/app-port.txt`. |
-| [React] An account without an Albert role sees the dock button. | The dock has no access control (Trac #30369). | Expected. The chat refuses the message. |
+| [React] An account without an Albert role sees the dock button. | The dock has no access control. | Expected. The chat refuses the message. |
 | The start fails after an engine upgrade: "no provider exposes model". | `tl_ai_default_model` names a model that left the default list. | Set `tl_<provider>_models`, or choose a model of the new list with the user. |
