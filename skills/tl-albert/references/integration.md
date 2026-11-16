@@ -74,7 +74,8 @@ If the engine ships a chat page (`engine.chatView: yes`), the app adds only the 
 
 - Add the navigation entry of `templates/nav-item.app.view.xml` to the overlay `views/app.view.xml`. Merge it into the existing `<sidebar config:ref="sidebar">`. The `id` must be unique in the whole view.
 - Default: show the page only to the Albert roles with `<access-control operation="AlbertChat"/>`. Do all three parts of `templates/albert-operation.config.xml`. Without the registration in `CommandGroupRegistry`, the app does not start.
-- Albert on every page: `templates/chat-dock.app.view.xml`. Use the same `chat-id` as the page (`albert`). The dock then shows the same conversation and hides itself on the Albert page.
+- Albert on every page, engine ships a chat page (`engine.chatView: yes`): use the `<chat-dock>` of the article `doc:ai/adding-albert`, step 3. It embeds the shipped page with `<view-ref>` and has no `chat-id`. Do not write an own dock content.
+- Albert on every page, engine ships no chat page: `templates/chat-dock.app.view.xml`. Use the same `chat-id` as the page (`albert`). The dock then shows the same conversation and hides itself on the Albert page.
 
 ## 3B. [Classic] Albert tab
 

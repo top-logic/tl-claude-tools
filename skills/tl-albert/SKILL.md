@@ -20,7 +20,7 @@ Do the steps in sequence. Do not skip a gate. Write all changes in the app repos
 ## Step 1: Detect
 
 1. Run `detect` on the app directory.
-2. If `engine.chatSecurity`, `engine.chatView` or `engine.howtoDoc` is `unknown`, build the app once (`mvn install -DskipTests=true -B 2>&1 | grep -E "^\[ERROR\]|BUILD (SUCCESS|FAILURE)"`). Then run `detect` again.
+2. If `engine.chatSecurity`, `engine.chatView` or `engine.howtoDoc` is `unknown`, the engine parts are not in the local Maven repository. Run the `engine.fetch` lines of `detect`. Then run `detect` again. A build does not fetch these parts before the app has the AI dependencies.
 3. If `engine.howtoDoc` is `yes`, read that article with `read_doc` (the name is in the `engine.names` line). Use it as the main how-to. Use `references/integration.md` only for what the article does not say.
 4. Read `references/integration.md` for each step that is `APPLY` or `ASK`.
 
@@ -69,7 +69,7 @@ Rules for each change:
 ## Step 5: Check
 
 1. Run `check`. Fix every `ERROR`. Fix each `WARN` or explain in the result why it stays.
-2. Build the app (command of step 1). Fix every `[ERROR]`.
+2. Build the app: `mvn install -DskipTests=true -B 2>&1 | grep -E "^\[ERROR\]|BUILD (SUCCESS|FAILURE)"`. Fix every `[ERROR]`.
 
 ## Step 6: Test as non-admin accounts
 

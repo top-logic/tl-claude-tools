@@ -78,6 +78,9 @@ public class AlbertDoctor {
 	/** Chat page shipped by tl-chat, relative to WEB-INF/views/. */
 	static final String ENGINE_CHAT_VIEW = "tl-chat/albert.view.xml";
 
+	/** The application shell of tl-layout-view, relative to WEB-INF/views/. App overlays reference its ids. */
+	static final String ENGINE_SHELL_VIEW = "app.view.xml";
+
 	/** The tl-chat jar maps the chat REST routes (/chat/*, e.g. /chat/capabilities) in this file. Gone since Trac #30126. */
 	static final String ENGINE_CHAT_REST_FRAGMENT = "META-INF/web-fragment.xml";
 
@@ -222,6 +225,9 @@ public class AlbertDoctor {
 
 		Boolean chatRestApi;
 
+		/** Ids of the engine's application shell (tl-layout-view app.view.xml), empty if unknown. */
+		final Set<String> shellIds = new TreeSet<>();
+
 		boolean scanned;
 
 		int fragments;
@@ -252,6 +258,8 @@ public class AlbertDoctor {
 			readAliases(coreWar);
 			chatRestApi = entryContains(group.resolve("tl-chat").resolve(version).resolve("tl-chat-" + version + ".jar"),
 				ENGINE_CHAT_REST_FRAGMENT, "/chat/*");
+			readShellIds(group.resolve("tl-layout-view").resolve(version)
+				.resolve("tl-layout-view-" + version + "-web-fragment.war"));
 			if (!Files.isDirectory(group)) {
 				return;
 			}
@@ -267,6 +275,25 @@ public class AlbertDoctor {
 				// Best effort: an unreadable repository leaves the index empty.
 			}
 			scanned = fragments > 0;
+		}
+
+		private void readShellIds(Path war) {
+			if (!Files.isRegularFile(war)) {
+				return;
+			}
+			try (ZipFile zip = new ZipFile(war.toFile())) {
+				ZipEntry entry = zip.getEntry("WEB-INF/views/" + ENGINE_SHELL_VIEW);
+				Document doc = entry == null ? null : Xml.parse(zip.getInputStream(entry));
+				if (doc != null) {
+					for (Element e : Xml.all(doc.getDocumentElement(), "*")) {
+						if (!e.getAttribute("id").isEmpty()) {
+							shellIds.add(e.getAttribute("id"));
+						}
+					}
+				}
+			} catch (IOException ex) {
+				// Best effort: no ids, no check.
+			}
 		}
 
 		private void scanFragment(Path war) {
@@ -842,7 +869,9 @@ public class AlbertDoctor {
 				chatDocks.add(f.rel);
 			}
 			for (Element ref : Xml.all(root, "view-ref")) {
-				navViewRefs.add(ref.getAttribute("view"));
+				if (Xml.ancestor(ref, "chat-dock") == null) {
+					navViewRefs.add(ref.getAttribute("view"));
+				}
 			}
 		}
 
@@ -1091,7 +1120,18 @@ public class AlbertDoctor {
 			println("engine.chatView (views/" + ENGINE_CHAT_VIEW + "): " + yn(engine.chatView));
 			println("engine.howtoDoc (doc:" + ENGINE_HOWTO_DOC + "): " + yn(engine.howtoDoc));
 			println("engine.chatRestApi (/chat/capabilities): " + yn(engine.chatRestApi));
+			println("engine.shellIds (views/" + ENGINE_SHELL_VIEW + ", for config:ref / config:reference): "
+				+ (engine.shellIds.isEmpty() ? "unknown" : join(engine.shellIds)));
 			println("engine.fragmentsScanned: " + engine.fragments);
+			if (engineVersion != null && (engine.chatSecurity == null || engine.chatView == null || engine.howtoDoc == null)) {
+				// Before step 1 the app has no AI dependency, so a build does not fetch these parts.
+				for (String a : new String[] { "tl-ai-core", "tl-chat" }) {
+					for (String type : new String[] { "jar", "war:web-fragment" }) {
+						println("engine.fetch: mvn -B -q dependency:get -Dtransitive=false -Dartifact=com.top-logic:" + a + ":"
+							+ engineVersion + ":" + type);
+					}
+				}
+			}
 			println("");
 			println("## Security");
 			println("roles.declared (InitialRolesManager): " + join(declaredRoles));
@@ -1211,10 +1251,12 @@ public class AlbertDoctor {
 				println("3B classic Albert tab: " + (classicChatGrants.isEmpty() ? "APPLY (security.xml has no tl-chat view grant)" : "DONE"));
 			} else {
 				boolean page = !chatViews.isEmpty() || navViewRefs.contains(ENGINE_CHAT_VIEW);
-				String variant = Boolean.TRUE.equals(engine.chatView)
-					? "use the shipped page: <view-ref view=\"" + ENGINE_CHAT_VIEW + "\"/>"
-					: "use templates/albert.view.xml (engine ships no chat page)";
-				println("3A React Albert page: " + (page ? "DONE - " + join(chatViews) : "APPLY - " + variant)
+				String variant = engine.chatView == null
+					? "ASK - engine parts unknown: run the engine.fetch lines, then detect again"
+					: "APPLY - " + (engine.chatView
+					? "use the shipped page: <view-ref view=\"" + ENGINE_CHAT_VIEW + "\"/>; dock: the one of doc:" + ENGINE_HOWTO_DOC
+					: "use templates/albert.view.xml (engine ships no chat page); dock: templates/chat-dock.app.view.xml");
+				println("3A React Albert page: " + (page ? "DONE - " + join(chatViews) : variant)
 					+ (chatDocks.isEmpty() ? "" : "; dock in " + join(chatDocks)));
 			}
 			String step4;
@@ -1224,7 +1266,7 @@ public class AlbertDoctor {
 			} else if (appChatSecurity()) {
 				step4 = "DONE - the app grants on tl.ai.execution:AgentSession";
 			} else if (engine.chatSecurity == null) {
-				step4 = "ASK - build the app once so the engine artifacts are local, then run detect again";
+				step4 = "ASK - engine parts unknown: run the engine.fetch lines, then detect again";
 			} else {
 				step4 = "APPLY - templates/chat-security.config.xml (engine " + engineVersion + " ships no chat security)";
 			}
@@ -1308,6 +1350,17 @@ public class AlbertDoctor {
 					if (!v.isEmpty() && !appViews.contains(v) && !engine.views.contains(v)) {
 						out.add(new Finding(engine.scanned, f.rel, "<view-ref view=\"" + v + "\"> names no view of the app"
 							+ (engine.scanned ? " or of the engine " + engineVersion : " (engine not checked)")));
+					}
+				}
+				if (f.rel.endsWith("WEB-INF/views/" + ENGINE_SHELL_VIEW) && !engine.shellIds.isEmpty()) {
+					for (Element e : Xml.all(f.doc.getDocumentElement(), "*")) {
+						for (String attr : new String[] { "config:ref", "config:reference" }) {
+							String id = e.getAttribute(attr);
+							if (!id.isEmpty() && !engine.shellIds.contains(id) && !ids.containsKey(id)) {
+								out.add(new Finding(true, f.rel, attr + "=\"" + id + "\" names no id of the engine shell "
+									+ engineVersion + " (ids: " + join(engine.shellIds) + ")"));
+							}
+						}
 					}
 				}
 				checkScripts(f, f.doc.getDocumentElement(), out);

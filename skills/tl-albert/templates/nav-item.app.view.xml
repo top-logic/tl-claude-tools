@@ -9,20 +9,24 @@
 
 	The id "albert" must be unique in the whole view.
 
+	Place: "detect" prints engine.shellIds. With the id "application" (8.0.0-alpha13 and later), the
+	item goes into <section id="application">, as below (if the overlay has this section already,
+	add the item to it). With "system-separator" and no
+	"application" (8.0.0-alpha12), remove the <section> wrapper and put
+	config:position="before" config:reference="system-separator" on the <nav-item>.
+
 	<access-control>: optional. It hides the page from accounts without an Albert role. It needs
 	all three parts of templates/albert-operation.config.xml, else the application does not start.
 	Remove the line if you do not use the operation.
 -->
 <sidebar config:ref="sidebar">
 	<items>
-		<nav-item id="albert"
-			config:position="before"
-			config:reference="system-separator"
-			icon="css:bi bi-chat-dots"
-		>
-			<label><en>Albert</en><de>Albert</de></label>
-			<access-control operation="AlbertChat"/>
-			<view-ref view="{{ALBERT_VIEW}}"/>
-		</nav-item>
+		<section id="application">
+			<nav-item id="albert" icon="css:bi bi-chat-dots">
+				<label><en>Albert</en><de>Albert</de></label>
+				<access-control operation="AlbertChat"/>
+				<view-ref view="{{ALBERT_VIEW}}"/>
+			</nav-item>
+		</section>
 	</items>
 </sidebar>
