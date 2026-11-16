@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+	Local-only setup task for the object security tests.
+
+	Copy to: deploy/local/webapp/WEB-INF/autoconf/com.top_logic.util.sched.Scheduler.zz-security-test-setup.config.xml
+	The "zz-" name sorts after the app's scheduler config: if that one uses config:override="true", this
+	file still merges into it. conf/ (metaConf) loads before autoconf/, so don't put it there.
+
+	On every startup the task idempotently wires the test accounts (test-users.objects.xml) into their
+	roles, creates the minimal test data, and LOGS A ROLE VERIFICATION (grep "SecurityTestSetup" in the
+	app log). The log is the fastest way to tell "rule doesn't deliver the role" from "grant missing" from
+	"data missing".
+
+	Pitfalls (see engine-reference.md §Test-user setup): errors go only to the task log in the DB and roll
+	back the whole task; ScriptTasks run unsecured, so all(T) sees every tenant: resolve master data by
+	name WITHIN the tenant; an unknown TL Script function fails the whole scheduler service; computed
+	attributes can't be set; constraints are checked at commit.
+
+	ADAPT: everything in the script (types, attribute names, tenant, roles, test data).
+-->
+<application config:interface="com.top_logic.basic.config.ApplicationConfig$Config"
+	xmlns:config="http://www.top-logic.com/ns/config/6.0"
+>
+	<services>
+		<config service-class="com.top_logic.util.sched.Scheduler">
+			<instance class="com.top_logic.util.sched.Scheduler">
+				<task class="com.top_logic.model.search.providers.ScriptTask"
+					name="SecurityTestSetup"
+				>
+					<schedules>
+						<on-startup/>
+					</schedules>
+					<script><![CDATA[{
+    person = name -> all(`tl.accounts:Person`)
+        .filter(p -> $p.get(`tl.accounts:Person#name`) == $name)
+        .singleElement();
+    group = name -> all(`tl.accounts:Group`)
+        .filter(g -> $g.get(`tl.accounts:Group#name`) == $name)
+        .singleElement();
+
+    // Adds a value to a multi-valued reference unless already present (idempotent).
+    addIfMissing = obj -> attr -> value ->
+        $obj.get($attr).containsElement($value)
+            ? "unchanged"
+            : { $obj.add($attr, $value); log("SecurityTestSetup: added " + $value + " to " + $obj); "added" };
+
+    // --- ADAPT: the tenant / scope the test users work in -------------------------------------
+    tenant = all(`app.core:Tenant`)
+        .filter(t -> $t.get(`app.core:Tenant#name`) == "Test")
+        .singleElement();
+
+    // --- ADAPT: role assignments (the references the assignment role rules read) --------------
+    log("SecurityTestSetup: assignments");
+    $addIfMissing($tenant, `app.core:Tenant#planners`, $person("T_PLANNER"));
+    $addIfMissing($tenant, `app.core:Tenant#readers`, $person("T_READER"));
+    $addIfMissing($group("SYSADMIN"), `tl.accounts:Group#members`, $person("T_SYSADMIN"));
+
+    // --- ADAPT: minimal test data, resolved/created WITHIN the tenant -------------------------
+    // e.g. one business object per role carrier type, one object in a second tenant (must stay invisible).
+
+    // --- Verification: which test user holds which role on which objects ---------------------
+    log("SecurityTestSetup: verification");
+    check = label -> objects -> role -> user -> log("SecurityTestSetup: " + $user + " "
+        + $role + " on " + $label + ": "
+        + $objects.filterPermission("SecurityStructure." + $role, $user).size()
+        + "/" + $objects.size());
+    $check("tenant", [$tenant], "PLANNER", "T_PLANNER");
+    $check("tenant", [$tenant], "READER", "T_READER");
+    $check("orders", all(`app.core:Order`), "PLANNER", "T_PLANNER");
+}]]></script>
+				</task>
+			</instance>
+		</config>
+	</services>
+</application>
