@@ -1,107 +1,127 @@
 ---
 name: tl-albert
-description: Add Albert, the AI chat agent of TopLogic (TL_SingleAgent, modules tl-ai-core, tl-chat, tl-chat-classic), to an existing TopLogic application - dependencies, LLM provider and key, the Albert page or tab, Albert rights per role, domain knowledge, and a check as non-admin accounts. Use for "add Albert to this app", "Bau Albert in diese Anwendung ein", an AI assistant or chat agent in a TopLogic app, tl-chat, tl-ai-core, "add AI to this application", or an app that still uses the old separate tl-ai artifacts.
+description: Add Albert, the AI chat agent of TopLogic (TL_SingleAgent, modules tl-ai-core, tl-chat, tl-chat-classic), to an existing TopLogic application on 8.0.0-alpha13 or later. The skill follows the engine article ai/adding-albert of the app's engine version. It adds a model-security gate, four questions, a checklist, and a test as non-admin accounts. Use for "add Albert to this app", "Bau Albert in diese Anwendung ein", an AI assistant or chat agent in a TopLogic app, tl-chat, tl-ai-core, "add AI to this application".
 allowed-tools: Bash, Read, Edit, Write, Glob, Grep, AskUserQuestion, Agent
 ---
 
 # Add Albert to a TopLogic application
 
-Albert is the chat agent of TopLogic (agent name `TL_SingleAgent`). Albert acts as the logged-in account. Albert sees only the data that the account may see. Albert changes only the data that the account may change. Thus the model security of the app is the base of every step.
+Albert is the chat agent of TopLogic (`TL_SingleAgent`). Albert acts as the logged-in account. Albert reads and changes only the data that the account can read and change. Thus the model security of the app is the base of every step.
 
-Do the steps in sequence. Do not skip a gate. Write all changes in the app repository on a new branch.
+The engine article `ai/adding-albert` of the app's engine version is the how-to. This skill adds only the workflow around it. **If the article and this skill disagree, the article wins.** Tell the user about the difference.
 
-## Tools of this skill
+Do the steps in sequence. Do not skip a gate. Write all changes on a new branch of the app repository. Paths are relative to `src/main/webapp/WEB-INF/`, except `pom.xml`.
 
-- **Doctor** (read-only, JDK 17+, no other tool): `java "${CLAUDE_PLUGIN_ROOT}/skills/tl-albert/AlbertDoctor.java" detect|check <app-dir>`. `detect` prints a fact sheet and the steps that apply. `check` prints errors and warnings and exits with 1 on an error. The doctor never prints a secret value. The doctor never writes a file.
-- **Templates**: `${CLAUDE_PLUGIN_ROOT}/skills/tl-albert/templates/`. Placeholders have the form `{{NAME}}`. Each template names its target file in its header comment.
-- **References** in `references/`: `integration.md` (the full how-to, all steps), `pitfalls.md` (symptom, cause, fix), `customize.md` (change the chat after the integration).
-- **Engine articles**: the `tl-mcp` tools `list_docs` and `read_doc` serve the articles of the engine version that the app builds against. These articles have priority over the references of this skill.
+## 1. Version
 
-## Step 1: Detect
+Read the engine version from `pom.xml` (`tl.version`, the `tl-bom` import, or the parent). If it is lower than `8.0.0-alpha13`, STOP. Tell the user to upgrade the engine first. Albert traps of this upgrade:
 
-1. Run `detect` on the app directory.
-2. If `engine.chatSecurity`, `engine.chatView` or `engine.howtoDoc` is `unknown`, the engine parts are not in the local Maven repository. Run the `engine.fetch` lines of `detect`. Then run `detect` again. A build does not fetch these parts before the app has the AI dependencies.
-3. If `engine.howtoDoc` is `yes`, read that article with `read_doc` (the name is in the `engine.names` line). Use it as the main how-to. Use `references/integration.md` only for what the article does not say.
-4. Read `references/integration.md` for each step that is `APPLY` or `ASK`.
+- The shell has `<section id="application">` and no `system-separator`. A `config:reference="system-separator"` in `views/app.view.xml` stops the start.
+- The default model lists of the providers changed. A `tl_ai_default_model` that is not in the new list stops the start ("no provider exposes model").
+- The engine ships the rights on own chats. Remove the app's own role rules and grants on the types of `tl.ai.execution`.
 
-The line `engine.names` holds the names of the shipped parts (agent, chat view, how-to article, owner role). Use these names. Do not use names from memory.
+## 2. Article
 
-## Step 2: Gate - model security
+1. Read `ai/adding-albert` with the `tl-mcp` tool `read_doc`. Read the articles that it links when a step needs details.
+2. If `read_doc` does not find it (the app has no AI dependency yet), extract it from the jar of that version:
+   `mvn -B -q dependency:get -Dtransitive=false -Dartifact=com.top-logic:tl-ai-core:<version>`, then
+   `unzip -p ~/.m2/repository/com/top-logic/tl-ai-core/<version>/tl-ai-core-<version>.jar META-INF/tl-docs/ai/adding-albert.md`.
+3. Do not use names from memory. Use the names of the article.
 
-Look at `gate.modelSecurity` and step `G`.
+## 3. Gate: model security
 
-- **STOP**: Do not continue. Tell the user why:
-  - Without a `<security-config>`, every type is closed to every non-admin account. Albert then finds nothing for a normal user.
-  - With grants that are too wide, Albert shows and changes data that a user must not see.
-  - Albert gets tool rights only through a role on `SecurityStructure#ROOT` (`singleton-rule`). A role on the root gives no data access. A grant in `<security-config>` needs a role rule that puts the role on the objects.
-  Offer to set up the model security as a separate task first. Point to the engine articles `ai/security/role-model-worked-example` (read first) and `access-configuration`.
-- **ASK**: Show the types without a Read grant. Ask whether these types are composition parts or have an access parent. The startup log of `SecurityCoverageCheck` (INFO) gives the final answer.
-- **PASS**: Continue.
+STOP if one of these is true:
 
-If `legacy.tl-ai` is not `none`, do also the migration of `references/integration.md`, section "Migrate from the separate tl-ai artifacts". Do it before step 4.
+- No file has a `<security-config>` (`grep -rl '<security-config' src/main/webapp/WEB-INF`). Every type is then closed to non-admin accounts.
+- No role has a `<singleton-rule>` with `target="SecurityStructure#ROOT"`. Albert finds the roles of an account only on the security root.
+- A grant is wider than the role needs in the UI. Albert then shows or changes data that a user must not see.
 
-## Step 3: Ask - at most 4 questions
+Tell the user why. Offer to set up the model security as a separate task first (articles `ai/security/role-model-worked-example`, `access-configuration`).
 
-Use one `AskUserQuestion` call. Write the questions and the options in the language of the user. Fill the options from the fact sheet (`roles.onRoot`, `ui`, the secrets, `llm.*`). Mark the recommended option.
+## 4. Questions
 
-1. **Roles that talk to Albert** (multi-select): the roles of `roles.onRoot`. An account without one of these roles gets no Albert.
-2. **Roles that may let Albert change data** (multi-select): a subset of question 1. Recommend only roles that have `Write` grants in `<security-config>`. Albert asks the account before each change. The model security checks each change again.
-3. **Provider, model and key**: a shipped provider (`anthropic`, `openai`, `mistral`, `xai`, secret `tl_<provider>_api_key`), or an own endpoint or gateway (`templates/LLMProviderService.config.xml`). Ask for the model too. If the model is not in the default list of the provider (`references/integration.md`, step 2), set `tl_<provider>_models` to a list that contains it, together with `tl_ai_default_model`. Else the start fails: "no provider exposes model". Tell the user: the data that Albert reads goes to the provider. The customer must approve this data flow before production use.
-4. **Where Albert appears**: React: own page (recommended), a dock on every page, or both. Classic: a tab (no choice, skip the question).
+Use one `AskUserQuestion` call. Write the questions and the options in the language of the user. Mark the recommended option.
 
-If `detect` shows `llm.WARN`, tell the user in question 3: the app does not start with this model until `tl_<provider>_models` contains it. Never change the model or the model variables for a test run without the agreement of the user.
+1. **Roles that talk to Albert** (multi-select): the roles with a `singleton-rule` on the root.
+2. **Roles that may let Albert change data** (multi-select): a subset of question 1. Recommend only roles with `Write` grants. Albert asks the account before each change.
+3. **Provider, model and key**: a shipped provider (article step 2) or an own endpoint. Tell the user: the data that Albert reads goes to the provider. The data owner must approve this data flow before production use.
+4. **Where Albert appears**: React: own page (recommended), a dock on every page, or both. Classic: the tab (skip the question).
 
-Do not ask more. Use the defaults of `references/integration.md` for all other decisions, and list them in the result.
+Do not ask more. Use the defaults of the article for all other decisions. List them in the result.
 
-## Step 4: Apply
+## 5. Apply
 
-Do the steps of the `detect` output that are `APPLY`. For each step, use the engine article first, then `references/integration.md`, then the templates.
+Do the steps of the article. Rules:
 
-Rules for each change:
+- **Merge, do not duplicate.** A file configures a `service-class` only once. Add new entries to the existing `<config>`. Make a new file in `autoconf/` only for a service that no file configures.
+- **No version** on the AI dependencies.
+- **Never write a key** into a file of the repository. Use the named secret (`<api-key name="..."/>` for an own provider). The key goes into the environment or `~/.top-logic/secrets/<secret name>`. Ask the user to set it. Do not read it. Do not print it.
+- **Workspace tools**: give `<grant group="workspace"/>` to each Albert role in `<tool-access>` until the engine fixes Trac #30369. Without it, the sections *Progress* and *Memory* of the Albert page stay empty. The article does not have this grant yet.
+- **Domain knowledge**: write only facts from the model labels, the tooltips or the user. Keep it under 30 lines per language. Show the draft in the result.
+- **Labels**: list each model element without a label or tooltip (en, de) in the result. Albert knows the model only from these texts. Add them only if the user agrees.
 
-- **Merge, do not duplicate.** A file may configure a `service-class` only once. The section "Configured services" of the fact sheet shows which file configures which service. Add new entries to that `<config>`. Create a new file in `WEB-INF/autoconf/` only for a service that no file configures.
-- **No version** on the AI dependencies. The BOM `tl-bom` or the parent sets `${tl.version}`.
-- **Never write a key** into a file of the repository. Use a named secret (`<api-key name="..."/>`). For local development, the key goes into the environment variable or into `~/.top-logic/secrets/<secret name>`. Ask the user to set it. Do not read it, do not print it.
-- **Step 4 of `detect` (own chats readable)**: apply `templates/chat-security.config.xml` only if `detect` says `APPLY`. Newer engines ship this policy.
-- **Domain knowledge (step 6)**: draft the text of `templates/AgentApplicationService.config.xml` from the model labels and tooltips (English and German). Write only facts from the labels, the tooltips or the user. Keep it under 30 lines per language. Show the draft to the user in the result.
-- **Labels**: list each model element of `labels.missing.*` and `tooltips.missing.*` in the result. Albert knows the model only through these texts. Add the missing texts only if the user agrees. Keep the bundles normalized.
+## 6. Checklist before the build
 
-## Step 5: Check
+Answer each line in the result (`ok`, or what you changed).
 
-1. Run `check`. Fix every `ERROR`. Fix each `WARN` or explain in the result why it stays.
-2. Build the app: `mvn install -DskipTests=true -B 2>&1 | grep -E "^\[ERROR\]|BUILD (SUCCESS|FAILURE)"`. Fix every `[ERROR]`.
+1. Each `service-class` occurs at most once in each file. This prints nothing: `for f in $(grep -rl 'service-class=' src/main/webapp/WEB-INF); do grep -o 'service-class="[^"]*"' "$f" | sort | uniq -d | sed "s|^|$f: |"; done`.
+2. React-only app: `pom.xml` has no `tl-chat-classic`.
+3. `pom.xml` has no `tl.ai.version` and no `<version>` on the AI dependencies.
+4. No `<llm-configuration>` and no `api-key="%` in `WEB-INF`.
+5. Each role in the policy has a `singleton-rule` on `SecurityStructure#ROOT`.
+6. The policy has `<agent-access default="none">` and a `<background-allowlist>`.
+7. Each Albert role has `<grant group="workspace"/>`.
+8. With the operation of article step 3: `commandGroup.AlbertChat` and `commandGroup.AlbertChat.tooltip` are in the `_en` and `_de` bundles.
+9. The chosen model is in the model list of its provider (`tl_<provider>_models`, else the default list in `WEB-INF/conf/tl-ai-core.conf.xml` of the `tl-ai-core` web-fragment war).
+10. A secret file needs the line `devel-secrets.xml` in `deploy/local/webapp/WEB-INF/conf/metaConf.txt`.
+11. No key in the change. This prints nothing: `git add -A && git diff --cached | grep -nP 'sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-|svcacct-)?[A-Za-z0-9_-]{20,}|xai-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|gh[pousr]_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY-----|api-key\s*=\s*"(?!%|unencrypted:%|")[^"]{12,}"|(?i)(api[_-]?key|secret|token|password)\s*[=:]\s*["\x27]?[A-Za-z0-9_-]{32,}'`.
 
-## Step 6: Test as non-admin accounts
+## 7. Build and boot
 
-An administrator bypasses the tool policy and the model security. A test as `root` proves nothing about the roles.
+1. `mvn install -DskipTests=true -B 2>&1 | grep -E "^\[ERROR\]|BUILD (SUCCESS|FAILURE)"`. Fix every `[ERROR]`.
+2. Start the app with the skill `tl-claude-tools:tl-app`. Read the log:
+   - 0 lines with `ERROR`.
+   - One line `Agent tool access: roles=<n> ... backgroundAllowlist=<n>`.
+   - The `SecurityCoverageCheck` INFO lines for the app types.
+   - Each `WARN` line of `AiToolAccessService`. Fix it, or tell in the result why it stays.
 
-1. Make sure that the key of the provider is set for the app process (environment variable or secret file). Ask the user if it is not set. Run `detect` in the same environment: `llm.WARN` must not appear.
-2. Use a new database. If `tmp/` has data of the user, ask first. Then:
-   1. Stop the app with `tl-app.sh stop` if it runs. Do not touch `tmp/` while the app runs.
-   2. Move the database to `tmp.bak-<date>` next to the module (`<module>/tmp.bak-<date>`), never into a Claude scratchpad. Keep `tmp/app-port.txt` in `tmp/`, so that the app keeps its port.
-   3. Start the app with the skill `tl-claude-tools:tl-app`.
-   Tell the user where the backup is.
-3. Read the log. Expect 0 lines with `ERROR` and one line `Agent tool access: roles=<n> ... backgroundAllowlist=<n>`. Read the `SecurityCoverageCheck` findings for the app types.
-4. As `root`, make one test account for each decided role and one account without an Albert role. Use the procedure of `references/integration.md`, section "Test accounts".
-5. For each test account, do these checks:
-   - Agents of the account. If `detect` shows `engine.chatRestApi: yes`: `/chat/capabilities` lists `TL_SingleAgent` for an Albert role, and no agent for the account without an Albert role. The request needs the window of an open page: `GET <app-url>/chat/capabilities?windowId=<window name>`. The window name is the parameter `windowName` of the requests `/react-api/poll` of that page. Without it the answer is 409 `stale_window`. Classic UI: open the Albert tab first. Use the window id of the `LayoutServlet` URL (the part before the `-`) and add `&conversation=classic`. If `engine.chatRestApi` is `no`, the engine has no `/chat/*` routes (Trac #30126). Then check the agents through the UI only: the items below.
-   - The Albert page (or dock, or tab) opens. A question about the data gets an answer. Ask for a table: the table opens in the rail of the page.
+## 8. Test as non-admin accounts
+
+An administrator bypasses the policy and the model security. A test as `root` proves nothing about the roles.
+
+1. Make sure that the app process has the key. If not, ask the user to set it.
+2. Use a new database. If `tmp/` has data of the user, ask first. Stop the app (`tl-app.sh stop`). Move `tmp/` to `<module>/tmp.bak-<date>`, but keep `tmp/app-port.txt` in `tmp/`. Start the app. Tell the user where the backup is.
+3. As `root`, make one account for each decided role and one account without an Albert role. Do not make an administrator.
+   - React (`/view/`): *Administration > Access control > Accounts* (German *Zugriffskontrolle > Konten*). Make the account. Then, in *Groups*, add it to the group that the `singleton-rule` of the role names.
+   - Classic: *Berechtigungen > Benutzerverwaltung*. End each edit with *Speichern* or *Abbrechen*.
+4. Do these checks for each account:
+   - The Albert page (or dock, or tab) opens. A question about the data gets an answer.
+   - Ask for a table. The table opens in the rail. *Progress* and *Memory* fill during the chat.
    - The chat list shows only the chats of this account.
-   - Read-only role: tell Albert to change an object. Albert refuses. The object stays unchanged.
-   - Write role: tell Albert to change an object. Albert shows an approval card (*Allow once*, *Allow in this chat*, *Reject*). After *Allow once*, the object has the new value.
-   - Account without an Albert role: the Albert page is absent (with the `AlbertChat` operation). The dock button stays visible. A message from the dock is not sent: the chat shows "No agent is available to you" (8.0.0-alpha12: `/chat/send` answers 403 and the UI shows nothing). The text stays in the input field.
-   - Dock: open it on a page other than the Albert page. Ask for a table: the table opens in the rail of the dock. On the Albert page the dock hides itself.
-6. If a browser tool is available (a Playwright MCP server, or `playwright-core` with a local Chromium), do the checks in the browser. Give the browser work to a subagent with a self-contained brief (URL, accounts, passwords, checks, expected results). Take one screenshot of the Albert page for each role.
-7. If no browser tool is available, give the user the checks of item 5 as a short numbered list with the accounts. Wait for the results.
-8. If a check fails, read `references/pitfalls.md`. Fix the cause, then go back to step 5.
+   - Read role: tell Albert to change an object. Albert refuses. The object keeps its value.
+   - Write role: tell Albert to change an object. Albert shows an approval card with *Allow once*, *Allow this chat* and *Reject* (German: *Einmal erlauben*, *In diesem Chat erlauben*, *Ablehnen*). After *Allow once*, the object has the new value.
+   - Account without an Albert role: no Albert page (with the operation `AlbertChat`). The dock button stays visible (Trac #30369). A message from the dock gets "No agent is available to you".
+   - Dock: open it on another page. Albert knows the selection of that page. On the Albert page the dock hides itself.
+5. If a browser tool is available (Playwright MCP, or `playwright-core` with a local Chromium), give the checks to a subagent. Write a self-contained brief: URL, accounts, passwords, checks, expected results, one screenshot of the Albert page for each role, one chat at a time.
+6. Else give the user the checks as a numbered list with the accounts. Wait for the results.
+7. If a check fails, fix the cause. Then go back to step 6.
 
-## Step 7: Deliver
+## 9. Deliver
 
-1. Commit the changes on a branch in the app repository, for example `albert-integration`. Use the commit style of the repository. Run `check` before the commit: it scans `git diff` for keys.
-2. Give the user this result:
-   - A table "role -> what Albert can do" (talk to Albert, read, change data, the tool groups).
-   - The files that you changed and why.
-   - The decisions that you took with defaults.
-   - The test results for each account.
-   - Open items: set the key in each environment (name of the secret), the customer approval of the provider and the data flow, the missing labels, the domain-knowledge draft for review.
-3. Never commit a key. Never print a key.
+1. Commit on a branch, for example `albert-integration`. Use the commit style of the repository. Never commit or print a key.
+2. Give the user:
+   - A table "role -> what Albert can do" (talk, read, change, tool groups).
+   - The changed files and why, the default decisions, the answers of the checklist.
+   - The test result for each account, with the screenshots.
+   - Open items: the secret in each environment (its name), the approval of the data flow, the missing labels, the domain-knowledge draft for review.
+   - The test accounts. Tell the user to remove them before production use.
+
+## Pitfalls that the article does not have
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| *Progress* and *Memory* on the Albert page stay empty. | The role has no tool group `workspace`. | Add `<grant group="workspace"/>` to the role. |
+| [Classic] "Momentan nicht bearbeitbar" on an account or group. | An edit did not end with *Speichern* or *Abbrechen*. The lock stays after a restart. | End each edit. A browser script must end it too. |
+| `tl-app.sh stop` does not find the app. The app starts on another port. | Somebody moved `tmp/` while the app ran, or moved `tmp/app-port.txt` too. | Stop the app first. Keep `tmp/app-port.txt`. |
+| [React] An account without an Albert role sees the dock button. | The dock has no access control (Trac #30369). | Expected. The chat refuses the message. |
+| The start fails after an engine upgrade: "no provider exposes model". | `tl_ai_default_model` names a model that left the default list. | Set `tl_<provider>_models`, or choose a model of the new list with the user. |
