@@ -97,7 +97,7 @@ An administrator bypasses the policy and the model security. A test as `root` pr
 4. Do these checks for each account:
    - The Albert page (or dock, or tab) opens. A question about the data gets an answer.
    - Ask for a table. The table opens in the rail.
-   - Tell Albert to remember a fact and to plan two tasks. Approve the card. *Progress* shows the tasks, *Memory* shows the fact.
+   - Tell Albert to remember a fact and to plan two tasks. Approve the card. *Progress* shows the tasks. [React] *Memory* shows the fact (the classic tab has no *Memory*).
    - The chat list shows only the chats of this account.
    - Read role: tell Albert to change an object. Albert refuses. The object keeps its value.
    - Write role: tell Albert to change an object. Albert shows an approval card with *Allow once*, *Allow this chat* and *Reject* (German: *Einmal erlauben*, *In diesem Chat erlauben*, *Ablehnen*). After *Allow once*, the object has the new value.
