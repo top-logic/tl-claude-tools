@@ -39,6 +39,7 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 - **`tl-layout`** — Reference for layout XML (`*.layout.xml`): the template-call pattern, catalog of common templates (table, tree, tab, tile, form, …) with their inner-component selector names, channel binding (`selection(...)`, `model(...)`, `CombineLinking`), `TreeModelByExpression` / `ListModelByExpression` model builders, and the most frequent pitfalls (escape rules, `orientation` vs `horizontal`, tile-context requirements).
 - **`migrating-to-tl-object-security`** — Step-by-step guide for migrating an app with legacy security (AccessManager role rules, `security.xml` role profiles, layout `securityObject`) to model-based object security (`SecurityConfigurationService`): legacy analysis, master data concept, per-role configuration with decisions, test setup, and browser/API tests. Ships reference docs, patterns, pitfalls, templates and test assets.
 - **`tl-app`** — Start, stop, or restart a TopLogic application during a Claude Code session. Ships a helper shell script that tracks the port, tails the log until the app reports ready, and reports the URL.
+- **`tl-albert`** - Adds Albert, the chat agent of TopLogic (`TL_SingleAgent`, modules `tl-ai-core` / `tl-chat` / `tl-chat-classic`), to an existing application on TopLogic 8.0.0-alpha13 or later. The engine article `ai/adding-albert` of the app's engine version is the how-to. The skill adds what the article does not have: a version stop, a model-security gate, at most four questions (roles, write roles, provider and key, where Albert appears), a checklist before the build, and a test as non-admin accounts.
 - **`run-scripted-test`** — Run a TopLogic scripted test (`.script.xml`) via the generic `test.TestAll` runner. Locates the test by name or path, resolves the containing module, and invokes Maven with the right system properties.
 
 ### MCP servers
@@ -58,6 +59,30 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 ### Hooks
 
 - **`tl-docs-index`** (`SessionStart`) — announces the developer articles of the workspace: prints the index (name and "when to read" description of each article) that `tl-mcp` writes to `target/tl-docs-index.md` at startup, which Claude Code adds to the session context. Before the server has run once in the workspace, it prints a single line pointing to `list_docs`; outside a TopLogic Maven project it prints nothing. It locates the project like the `tl-mcp` launcher (session directory, a child directory with the pom, or a parent). New articles need no plugin change.
+
+## Quickstart: Albert mit Claude einbauen
+
+**Deutsch.** So baut ihr Albert in eine bestehende TopLogic-Anwendung ein:
+
+1. Installiert das Plugin (siehe [Installation](#installation)).
+2. Startet Claude Code im Repository der Anwendung.
+3. Schreibt: `Bau Albert in diese Anwendung ein.`
+4. Beantwortet die Fragen: Welche Rollen sprechen mit Albert? Welche Rollen dürfen Albert Daten ändern lassen? Welcher Anbieter und welcher Schlüssel? Wo erscheint Albert?
+5. Prüft die Ergebnistabelle "Rolle -> was Albert kann" und die offenen Punkte.
+6. Prüft die Änderungen auf dem neuen Branch, bevor ihr sie übernehmt.
+
+Voraussetzung: TopLogic 8.0.0-alpha13 oder neuer. Die modellbasierte Sicherheit (`<security-config>`) ist für jede Rolle vollständig. Sonst hält Claude an und bietet diese Arbeit zuerst an. Der Schlüssel des Anbieters kommt nie in das Repository.
+
+**English.** To add Albert to an existing TopLogic application:
+
+1. Install the plugin (see [Installation](#installation)).
+2. Start Claude Code in the repository of the application.
+3. Write: `Add Albert to this application.`
+4. Answer the questions: Which roles talk to Albert? Which roles may let Albert change data? Which provider and key? Where does Albert appear?
+5. Check the result table "role -> what Albert can do" and the open items.
+6. Review the changes on the new branch before you merge them.
+
+Prerequisite: TopLogic 8.0.0-alpha13 or later. The model-based security (`<security-config>`) is complete for each role. Otherwise Claude stops and offers this work first. The key of the provider never goes into the repository.
 
 ## Development
 
@@ -85,6 +110,8 @@ skills/
 ├── tl-app/
 │   ├── SKILL.md
 │   └── tl-app.sh
+├── tl-albert/
+│   └── SKILL.md
 └── run-scripted-test/
     └── SKILL.md
 ```
