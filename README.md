@@ -40,6 +40,7 @@ Auto-update for third-party marketplaces is off by default — enable it via `/p
 - **`migrating-to-tl-object-security`** — Step-by-step guide for migrating an app with legacy security (AccessManager role rules, `security.xml` role profiles, layout `securityObject`) to model-based object security (`SecurityConfigurationService`): legacy analysis, master data concept, per-role configuration with decisions, test setup, and browser/API tests. Ships reference docs, patterns, pitfalls, templates and test assets.
 - **`tl-app`** — Start, stop, or restart a TopLogic application during a Claude Code session. Ships a helper shell script that tracks the port, tails the log until the app reports ready, and reports the URL.
 - **`tl-albert`** - Adds Albert, the chat agent of TopLogic (`TL_SingleAgent`, modules `tl-ai-core` / `tl-chat` / `tl-chat-classic`), to an existing application on TopLogic 8.0.0-alpha13 or later. The engine article `ai/adding-albert` of the app's engine version is the how-to. The skill adds what the article does not have: a version stop, a model-security gate, at most four questions (roles, write roles, provider and key, where Albert appears), a checklist before the build, and a test as non-admin accounts.
+- **`tl-upgrade`** — Moves an application to a newer engine release: finds the target release on the Nexus, fetches the published migration guide of every release step (`…/releases/TL_<new>/migration-<old>-to-<new>.md`), runs its Detect searches against the application's sources, applies what applies, writes the application's own migration for a table the engine would otherwise keep through a recovered schema definition (`WEB-INF/autoconf/inapp-schema-N`), replays the upgrade on a database of the old release in a worktree, and verifies build, tests, start log and views.
 - **`run-scripted-test`** — Run a TopLogic scripted test (`.script.xml`) via the generic `test.TestAll` runner. Locates the test by name or path, resolves the containing module, and invokes Maven with the right system properties.
 
 ### MCP servers
@@ -111,6 +112,8 @@ skills/
 │   ├── SKILL.md
 │   └── tl-app.sh
 ├── tl-albert/
+│   └── SKILL.md
+├── tl-upgrade/
 │   └── SKILL.md
 └── run-scripted-test/
     └── SKILL.md
