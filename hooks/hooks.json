@@ -5,7 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/tl-docs-index.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/tl-docs-index.sh",
+            "timeout": 15
           }
         ]
       }
